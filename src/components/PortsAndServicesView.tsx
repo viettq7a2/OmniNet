@@ -24,9 +24,11 @@ import {
   NetworkDevice,
   ServerService,
 } from '../types/network';
+import { AppLanguage } from '../utils/i18n';
 
 interface PortsAndServicesViewProps {
   devices: NetworkDevice[];
+  lang?: AppLanguage;
   onTogglePortAdminStatus: (deviceId: string, portName: string) => void;
   onUpdatePortVlanOrDesc: (
     deviceId: string,
@@ -45,12 +47,14 @@ interface PortsAndServicesViewProps {
 
 export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
   devices,
+  lang = 'vi',
   onTogglePortAdminStatus,
   onUpdatePortVlanOrDesc,
   onServiceAction,
   onAddServerService,
   onOpenVisualConfig,
 }) => {
+  const isVi = lang === 'vi';
   const [sectionTab, setSectionTab] = useState<'ports' | 'services'>('ports');
 
   const networkAppliances = useMemo(
@@ -175,16 +179,11 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Port Up/Down Telemetry & Server Services Monitor
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time physical RJ45/SFP+ switch & router port states alongside application daemons on enterprise servers
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {isVi ? 'Cổng Vật lý & Dịch vụ Máy chủ' : 'Ports & Server Services'}
+        </h1>
 
         {/* Section Switcher */}
         <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
@@ -198,7 +197,11 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
             }`}
           >
             <Cable className="w-3.5 h-3.5" />
-            <span>Switch / Router / Firewall Ports ({portTotals.up}/{portTotals.total} UP)</span>
+            <span>
+              {isVi
+                ? `Cổng Switch / Router / Firewall (${portTotals.up}/${portTotals.total} UP)`
+                : `Switch / Router / Firewall Ports (${portTotals.up}/{portTotals.total} UP)`}
+            </span>
           </button>
           <button
             type="button"
@@ -210,7 +213,11 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
             }`}
           >
             <Server className="w-3.5 h-3.5" />
-            <span>Server Services ({serviceTotals.running}/{serviceTotals.total} Running)</span>
+            <span>
+              {isVi
+                ? `Dịch vụ Máy chủ (${serviceTotals.running}/${serviceTotals.total} Đang chạy)`
+                : `Server Services (${serviceTotals.running}/{serviceTotals.total} Running)`}
+            </span>
           </button>
         </div>
       </div>
@@ -220,18 +227,22 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
           {/* Fleet Port Summary Strip */}
           <div className="grid grid-cols-2 lg:grid-cols-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800">
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Active Link-Up Ports</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Cổng Đang Hoạt động (Link-Up)' : 'Active Link-Up Ports'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-emerald-600 dark:text-emerald-400 tabular-nums">
                   {portTotals.up}
                 </span>
                 <span className="text-xs font-mono text-slate-500 tabular-nums">
-                  of {portTotals.total} total ports
+                  / {portTotals.total} {isVi ? 'cổng' : 'ports'}
                 </span>
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Link-Down / Unplugged</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Cổng Ngắt / Chưa cắm cáp (Down)' : 'Link-Down / Unplugged'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-rose-600 dark:text-rose-400 tabular-nums">
                   {portTotals.down}
@@ -242,7 +253,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">PoE+ Power Draw</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Công suất cấp nguồn PoE+' : 'PoE+ Power Draw'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-slate-900 dark:text-slate-100 tabular-nums">
                   {portTotals.poeWatts} W
@@ -251,7 +264,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Monitored Appliances</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Thiết bị Mạng Giám sát' : 'Monitored Appliances'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-slate-900 dark:text-slate-100 tabular-nums">
                   {networkAppliances.length}
@@ -268,7 +283,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                 <div className="flex flex-wrap items-center gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                      Select Switch / Router / Firewall Chassis
+                      {isVi
+                        ? 'Chọn Thiết bị Switch / Router / Firewall'
+                        : 'Select Switch / Router / Firewall Chassis'}
                     </label>
                     <select
                       value={selectedNetDevice.id}
@@ -309,7 +326,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
                 >
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>Hook & Configure Visual GUI</span>
+                  <span>
+                    {isVi ? 'Cấu hình Trực quan & CLI' : 'Hook & Configure Visual GUI'}
+                  </span>
                 </button>
               </div>
 
@@ -476,7 +495,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                         }
                         className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200"
                       >
-                        Save Port Label/VLAN
+                        {isVi ? 'Lưu Nhãn / VLAN' : 'Save Port Label/VLAN'}
                       </button>
 
                       <button
@@ -493,7 +512,11 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                         <Power className="w-3.5 h-3.5" />
                         <span>
                           {(activePort.adminStatus ?? 'up') === 'down'
-                            ? 'Enable Port (no shutdown)'
+                            ? isVi
+                              ? 'Bật Cổng (no shutdown)'
+                              : 'Enable Port (no shutdown)'
+                            : isVi
+                            ? 'Tắt Cổng (shutdown)'
                             : 'Shut Down Port'}
                         </span>
                       </button>
@@ -507,13 +530,13 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-900/50">
-                      <th className="py-2.5 px-4">Port Name</th>
-                      <th className="py-2.5 px-4">Link State</th>
-                      <th className="py-2.5 px-4">Media · Speed</th>
+                      <th className="py-2.5 px-4">{isVi ? 'Tên Cổng' : 'Port Name'}</th>
+                      <th className="py-2.5 px-4">{isVi ? 'Trạng thái' : 'Link State'}</th>
+                      <th className="py-2.5 px-4">{isVi ? 'Chuẩn Cáp · Tốc độ' : 'Media · Speed'}</th>
                       <th className="py-2.5 px-4">VLAN / Mode</th>
-                      <th className="py-2.5 px-4">Connected LLDP/CDP Peer</th>
+                      <th className="py-2.5 px-4">{isVi ? 'Thiết bị Đấu nối (LLDP/CDP)' : 'Connected LLDP/CDP Peer'}</th>
                       <th className="py-2.5 px-4 text-right">Rx / Tx (Mbps)</th>
-                      <th className="py-2.5 px-4 text-right">Port Control</th>
+                      <th className="py-2.5 px-4 text-right">{isVi ? 'Điều khiển' : 'Port Control'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
@@ -584,7 +607,13 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                               }
                               className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                             >
-                              {isAdminShut ? 'Bring Up' : 'Shut Down'}
+                              {isAdminShut
+                                ? isVi
+                                  ? 'Mở Cổng'
+                                  : 'Bring Up'
+                                : isVi
+                                ? 'Ngắt Cổng'
+                                : 'Shut Down'}
                             </button>
                           </td>
                         </tr>
@@ -602,7 +631,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
           {/* Server Service Summary KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800">
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Running Services</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Dịch vụ Đang Chạy' : 'Running Services'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-emerald-600 dark:text-emerald-400 tabular-nums">
                   {serviceTotals.running}
@@ -613,25 +644,35 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Degraded Daemons</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Dịch vụ Phản hồi Chậm' : 'Degraded Daemons'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-amber-600 dark:text-amber-400 tabular-nums">
                   {serviceTotals.degraded}
                 </span>
-                <span className="text-xs font-mono text-slate-500">High latency</span>
+                <span className="text-xs font-mono text-slate-500">
+                  {isVi ? 'Độ trễ cao' : 'High latency'}
+                </span>
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Stopped / Failed</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Dịch vụ Đã Dừng / Lỗi' : 'Stopped / Failed'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-rose-600 dark:text-rose-400 tabular-nums">
                   {serviceTotals.stopped}
                 </span>
-                <span className="text-xs font-mono text-slate-500">Port closed</span>
+                <span className="text-xs font-mono text-slate-500">
+                  {isVi ? 'Đóng cổng' : 'Port closed'}
+                </span>
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Monitored Servers</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {isVi ? 'Máy chủ Giám sát' : 'Monitored Servers'}
+              </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-2xl font-semibold font-display text-slate-900 dark:text-slate-100 tabular-nums">
                   {serverNodes.length}
@@ -654,7 +695,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
-                    All Servers ({serverNodes.length})
+                    {isVi
+                      ? `Tất cả Máy chủ (${serverNodes.length})`
+                      : `All Servers (${serverNodes.length})`}
                   </button>
                   {serverNodes.map((srv) => (
                     <button
@@ -686,7 +729,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Monitored Service</span>
+                <span>{isVi ? 'Thêm Dịch vụ Giám sát' : 'Add Monitored Service'}</span>
               </button>
             </div>
 
@@ -694,13 +737,13 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-900/50">
-                    <th className="py-2.5 px-4">Service & Daemon Process</th>
-                    <th className="py-2.5 px-4">Server Host · IP</th>
-                    <th className="py-2.5 px-4">Port · Protocol</th>
-                    <th className="py-2.5 px-4">Service Health</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Tên Dịch vụ & Tiến trình' : 'Service & Daemon Process'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Máy chủ · IP' : 'Server Host · IP'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Cổng · Giao thức' : 'Port · Protocol'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Trạng thái' : 'Service Health'}</th>
                     <th className="py-2.5 px-4 text-right">CPU · Memory</th>
-                    <th className="py-2.5 px-4 text-right">Response · Uptime</th>
-                    <th className="py-2.5 px-4 text-right">Daemon Control</th>
+                    <th className="py-2.5 px-4 text-right">{isVi ? 'Độ trễ · Uptime' : 'Response · Uptime'}</th>
+                    <th className="py-2.5 px-4 text-right">{isVi ? 'Điều khiển' : 'Daemon Control'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
@@ -730,19 +773,19 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                         {effectiveStatus === 'running' && (
                           <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Running</span>
+                            <span>{isVi ? 'Đang chạy' : 'Running'}</span>
                           </span>
                         )}
                         {effectiveStatus === 'degraded' && (
                           <span className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
                             <AlertTriangle className="w-3.5 h-3.5" />
-                            <span>Degraded</span>
+                            <span>{isVi ? 'Suy giảm' : 'Degraded'}</span>
                           </span>
                         )}
                         {effectiveStatus === 'stopped' && (
                           <span className="inline-flex items-center gap-1.5 font-medium text-rose-700 dark:text-rose-400">
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>Stopped</span>
+                            <span>{isVi ? 'Đã dừng' : 'Stopped'}</span>
                           </span>
                         )}
                       </td>
@@ -757,7 +800,9 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                       </td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                         {effectiveStatus === 'stopped' ? (
-                          <span className="text-rose-600 dark:text-rose-400">Closed</span>
+                          <span className="text-rose-600 dark:text-rose-400">
+                            {isVi ? 'Đóng' : 'Closed'}
+                          </span>
                         ) : (
                           <span className="text-slate-700 dark:text-slate-300">
                             {service.responseTimeMs} ms · {service.uptime}
@@ -773,13 +818,17 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                               onClick={() => onServiceAction(server.id, service.id, 'start')}
                               title={
                                 server.status === DeviceStatus.Offline
-                                  ? 'Bring server host online first'
+                                  ? isVi
+                                    ? 'Hãy bật máy chủ ONLINE trước'
+                                    : 'Bring server host online first'
+                                  : isVi
+                                  ? 'Khởi động dịch vụ'
                                   : 'Start service'
                               }
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-medium"
                             >
                               <Play className="w-3 h-3" />
-                              <span>Start</span>
+                              <span>{isVi ? 'Chạy' : 'Start'}</span>
                             </button>
                           ) : (
                             <button
@@ -788,7 +837,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium"
                             >
                               <Square className="w-3 h-3" />
-                              <span>Stop</span>
+                              <span>{isVi ? 'Dừng' : 'Stop'}</span>
                             </button>
                           )}
                           <button
@@ -798,7 +847,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 font-medium"
                           >
                             <RefreshCw className="w-3 h-3" />
-                            <span>Restart</span>
+                            <span>{isVi ? 'Khởi động lại' : 'Restart'}</span>
                           </button>
                         </div>
                       </td>
@@ -817,7 +866,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-md shadow-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Add Server Service Health Monitor
+                {isVi ? 'Thêm Dịch vụ Máy chủ Giám sát' : 'Add Server Service Health Monitor'}
               </h2>
               <button
                 type="button"
@@ -831,7 +880,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
             <form onSubmit={handleCreateService} className="p-5 space-y-3.5 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Target Server Host
+                  {isVi ? 'Máy chủ Đích' : 'Target Server Host'}
                 </label>
                 <select
                   value={svcTargetServerId}
@@ -847,7 +896,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               </div>
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Service Display Name
+                  {isVi ? 'Tên Dịch vụ Hiển thị' : 'Service Display Name'}
                 </label>
                 <input
                   type="text"
@@ -861,7 +910,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Process Name
+                    {isVi ? 'Tiến trình (PID)' : 'Process Name'}
                   </label>
                   <input
                     type="text"
@@ -872,7 +921,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Protocol
+                    {isVi ? 'Giao thức' : 'Protocol'}
                   </label>
                   <select
                     value={svcProtocol}
@@ -889,7 +938,7 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Port
+                    {isVi ? 'Cổng (Port)' : 'Port'}
                   </label>
                   <input
                     type="number"
@@ -908,13 +957,13 @@ export const PortsAndServicesView: React.FC<PortsAndServicesViewProps> = ({
                   onClick={() => setIsAddServiceModalOpen(false)}
                   className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                 >
-                  Cancel
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 >
-                  Start Monitoring
+                  {isVi ? 'Bắt đầu Giám sát' : 'Start Monitoring'}
                 </button>
               </div>
             </form>

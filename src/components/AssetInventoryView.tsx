@@ -18,8 +18,11 @@ import {
   VendorName,
 } from '../types/network';
 
+import { AppLanguage } from '../utils/i18n';
+
 interface AssetInventoryViewProps {
   devices: NetworkDevice[];
+  lang?: AppLanguage;
   onSelectDevice: (device: NetworkDevice) => void;
   onAddDevice: (device: NetworkDevice) => void;
   onUpdateDevice: (device: NetworkDevice) => void;
@@ -50,12 +53,14 @@ function formatUptime(seconds: number): string {
 
 export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
   devices,
+  lang = 'vi',
   onSelectDevice,
   onAddDevice,
   onUpdateDevice,
   onDeleteDevice,
   onOpenDatasheetSync,
 }) => {
+  const isVi = lang === 'vi';
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | DeviceRole>('ALL');
   const [vendorFilter, setVendorFilter] = useState<'ALL' | VendorName>('ALL');
@@ -277,16 +282,11 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Enterprise IT Asset Inventory (CMDB)
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Quản lý thiết bị đa hãng (Ubiquiti UniFi, Aruba, HPE Comware, HP ProCurve, Cisco, Fortinet...) & cập nhật tập lệnh CLI theo phiên bản OS thời gian thực
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {isVi ? 'Kho Tài sản Thiết bị (CMDB)' : 'IT Asset Inventory (CMDB)'}
+        </h1>
 
         <div className="flex flex-wrap items-center gap-2.5">
           {onOpenDatasheetSync && (
@@ -296,7 +296,11 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors whitespace-nowrap shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Nhập Hãng/Mã thiếu & Cập nhật Database CLI</span>
+              <span>
+                {isVi
+                  ? 'Nhập Hãng/Mã thiếu & Cập nhật Database CLI'
+                  : 'Add Missing Vendor/Model & Sync CLI DB'}
+              </span>
             </button>
           )}
           <button
@@ -305,7 +309,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <span>{isVi ? 'Xuất CSV' : 'Export CSV'}</span>
           </button>
           <button
             type="button"
@@ -313,7 +317,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Register Asset</span>
+            <span>{isVi ? 'Đăng ký Thiết bị Mới' : 'Register Asset'}</span>
           </button>
         </div>
       </div>
@@ -322,30 +326,30 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Role Segmented Control */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              {(['ALL', ...Object.values(DeviceRole)] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRoleFilter(r)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                    roleFilter === r
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {r === 'ALL' ? 'All Roles' : r}
-                </button>
+            {/* Compact Role Dropdown */}
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as 'ALL' | DeviceRole)}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none"
+            >
+              <option value="ALL">
+                {isVi ? 'Vai trò: Tất cả thiết bị' : 'Role: All Devices'}
+              </option>
+              {Object.values(DeviceRole).map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
-            </div>
+            </select>
 
             <select
               value={vendorFilter}
               onChange={(e) => setVendorFilter(e.target.value as 'ALL' | VendorName)}
-              className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none"
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none"
             >
-              <option value="ALL">All Vendors</option>
+              <option value="ALL">
+                {isVi ? 'Hãng SX: Tất cả hãng' : 'Vendor: All Vendors'}
+              </option>
               {VENDORS.map((v) => (
                 <option key={v} value={v}>
                   {v}
@@ -360,7 +364,11 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter asset tag, serial, host, IP..."
+              placeholder={
+                isVi
+                  ? 'Tìm mã tài sản, số Serial, Hostname, IP...'
+                  : 'Filter asset tag, serial, host, IP...'
+              }
               className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
@@ -370,13 +378,25 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-900/50">
-                <th className="py-2.5 px-4">Asset Tag · Serial</th>
-                <th className="py-2.5 px-4">Hostname · Network</th>
-                <th className="py-2.5 px-4">Vendor · Hardware Model</th>
-                <th className="py-2.5 px-4">Site · Rack Position</th>
-                <th className="py-2.5 px-4">Owner · Warranty</th>
-                <th className="py-2.5 px-4">State · Uptime</th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Mã Tài sản · Số Serial' : 'Asset Tag · Serial'}
+                </th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Hostname · Địa chỉ Mạng' : 'Hostname · Network'}
+                </th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Hãng SX · Dòng Phần cứng' : 'Vendor · Hardware Model'}
+                </th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Chi nhánh · Vị trí Tủ Rack' : 'Site · Rack Position'}
+                </th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Bộ phận · Hạn Bảo hành' : 'Owner · Warranty'}
+                </th>
+                <th className="py-2.5 px-4">
+                  {isVi ? 'Trạng thái · Uptime' : 'State · Uptime'}
+                </th>
+                <th className="py-2.5 px-4 text-right">{isVi ? 'Tác vụ' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
@@ -451,14 +471,14 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                           }}
                           className="px-2 py-1 text-xs font-medium bg-rose-600 text-white rounded-md hover:bg-rose-700"
                         >
-                          Confirm
+                          {isVi ? 'Xác nhận' : 'Confirm'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           className="px-2 py-1 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300"
                         >
-                          Cancel
+                          {isVi ? 'Hủy' : 'Cancel'}
                         </button>
                       </div>
                     ) : (
@@ -469,13 +489,13 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         >
                           <Edit3 className="w-3 h-3" />
-                          <span>Edit</span>
+                          <span>{isVi ? 'Sửa' : 'Edit'}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(asset.id)}
                           className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:border-rose-200 dark:hover:border-rose-900 transition-colors"
-                          title="Remove asset"
+                          title={isVi ? 'Xóa tài sản' : 'Remove asset'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -495,7 +515,13 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-xl shadow-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {editingDevice ? `Edit Asset — ${editingDevice.assetTag}` : 'Register Network Hardware Asset'}
+                {editingDevice
+                  ? isVi
+                    ? `Cập nhật Tài sản — ${editingDevice.assetTag}`
+                    : `Edit Asset — ${editingDevice.assetTag}`
+                  : isVi
+                  ? 'Đăng ký Thiết bị Phần cứng Mới'
+                  : 'Register Network Hardware Asset'}
               </h2>
               <button
                 type="button"
@@ -522,7 +548,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Management IPv4
+                    {isVi ? 'Địa chỉ IPv4 Quản trị' : 'Management IPv4'}
                   </label>
                   <input
                     type="text"
@@ -534,7 +560,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Hardware Vendor
+                    {isVi ? 'Hãng Sản xuất' : 'Hardware Vendor'}
                   </label>
                   <select
                     value={formVendor}
@@ -550,7 +576,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Device Role
+                    {isVi ? 'Vai trò Thiết bị' : 'Device Role'}
                   </label>
                   <select
                     value={formRole}
@@ -566,7 +592,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Hardware Model
+                    {isVi ? 'Mã Dòng máy (Model)' : 'Hardware Model'}
                   </label>
                   <input
                     type="text"
@@ -577,7 +603,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    OS / Firmware Version
+                    {isVi ? 'Phiên bản Hệ điều hành / Firmware' : 'OS / Firmware Version'}
                   </label>
                   <input
                     type="text"
@@ -588,7 +614,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Asset Tag
+                    {isVi ? 'Mã Tài sản (Asset Tag)' : 'Asset Tag'}
                   </label>
                   <input
                     type="text"
@@ -599,7 +625,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Serial Number
+                    {isVi ? 'Số Serial (S/N)' : 'Serial Number'}
                   </label>
                   <input
                     type="text"
@@ -610,7 +636,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Data Center / Site
+                    {isVi ? 'Trung tâm Dữ liệu / Chi nhánh' : 'Data Center / Site'}
                   </label>
                   <select
                     value={formSite}
@@ -625,7 +651,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Rack & RU Location
+                    {isVi ? 'Vị trí Tủ Rack & RU' : 'Rack & RU Location'}
                   </label>
                   <input
                     type="text"
@@ -636,7 +662,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Department Owner
+                    {isVi ? 'Bộ phận Quản lý' : 'Department Owner'}
                   </label>
                   <input
                     type="text"
@@ -647,7 +673,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Warranty Expiration
+                    {isVi ? 'Ngày Hết hạn Bảo hành' : 'Warranty Expiration'}
                   </label>
                   <input
                     type="date"
@@ -664,13 +690,19 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                 >
-                  Cancel
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 >
-                  {editingDevice ? 'Save Changes' : 'Add to Inventory'}
+                  {editingDevice
+                    ? isVi
+                      ? 'Lưu Thay đổi'
+                      : 'Save Changes'
+                    : isVi
+                    ? 'Thêm vào Kho CMDB'
+                    : 'Add to Inventory'}
                 </button>
               </div>
             </form>

@@ -11,10 +11,8 @@ import {
   RefreshCw,
   Search,
   Server,
-  ShieldCheck,
   Sparkles,
   Terminal,
-  X,
 } from 'lucide-react';
 import {
   DeviceRole,
@@ -23,10 +21,12 @@ import {
   VendorDatasheetProfile,
   VendorName,
 } from '../types/network';
+import { AppLanguage } from '../utils/i18n';
 
 interface VendorDatasheetSyncModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  lang?: AppLanguage;
   syncedProfiles: VendorDatasheetProfile[];
   onSaveProfile: (profile: VendorDatasheetProfile) => void;
   onAddDeviceFromProfile: (newDevice: NetworkDevice) => void;
@@ -77,11 +77,12 @@ const QUICK_VENDOR_PRESETS = [
 
 export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> = ({
   isOpen,
-  onClose,
+  lang = 'vi',
   syncedProfiles,
   onSaveProfile,
   onAddDeviceFromProfile,
 }) => {
+  const isVi = lang === 'vi';
   const [vendorInput, setVendorInput] = useState('Ubiquiti UniFi');
   const [modelInput, setModelInput] = useState('USW-Pro-Max-48-PoE');
   const [osVersionInput, setOsVersionInput] = useState('UniFi OS 4.0.6 / Network 8.5.6');
@@ -186,7 +187,14 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
       canvasPos: { x: 450, y: 345 },
       interfaces: [
         {
-          name: mappedVendor === 'Ubiquiti UniFi' ? '0/1' : mappedVendor === 'HPE Comware' ? 'Twenty-FiveGigE1/0/1' : mappedVendor === 'HP ProCurve' ? '1' : '1/1/1',
+          name:
+            mappedVendor === 'Ubiquiti UniFi'
+              ? '0/1'
+              : mappedVendor === 'HPE Comware'
+              ? 'Twenty-FiveGigE1/0/1'
+              : mappedVendor === 'HP ProCurve'
+              ? '1'
+              : '1/1/1',
           description: 'Access-VLAN20-Port',
           status: 'up',
           adminStatus: 'up',
@@ -199,7 +207,14 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
           protocol: 'LLDP',
         },
         {
-          name: mappedVendor === 'Ubiquiti UniFi' ? '0/49' : mappedVendor === 'HPE Comware' ? 'Twenty-FiveGigE1/0/49' : mappedVendor === 'HP ProCurve' ? '49' : '1/1/49',
+          name:
+            mappedVendor === 'Ubiquiti UniFi'
+              ? '0/49'
+              : mappedVendor === 'HPE Comware'
+              ? 'Twenty-FiveGigE1/0/49'
+              : mappedVendor === 'HP ProCurve'
+              ? '49'
+              : '1/1/49',
           description: 'Core-Uplink-Trunk',
           status: 'up',
           adminStatus: 'up',
@@ -235,48 +250,43 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
 
     onAddDeviceFromProfile(createdDevice);
     setAddedToast(
-      `Đã cập nhật Database & thêm thiết bị ${hostnameClean} (${activeProfile.vendor} · ${activeProfile.osVersion}) vào danh sách quản lý!`
+      isVi
+        ? `Đã cập nhật CSDL & thêm thiết bị ${hostnameClean} (${activeProfile.vendor} · ${activeProfile.osVersion}) vào danh sách quản lý!`
+        : `Updated database & onboarded ${hostnameClean} (${activeProfile.vendor} · ${activeProfile.osVersion}) to inventory!`
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-6 py-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden flex flex-col">
+        {/* Clean Inline Header (No X close button, no verbose subtitle) */}
+        <div className="px-5 py-3.5 bg-slate-900 dark:bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-              <Database className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+              <Database className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">
-                  Cập nhật Hãng Thiết bị, Datasheet & Tập lệnh CLI theo Phiên bản OS (Thời gian thực)
-                </h2>
-                <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  Live Datasheet & Forum Sync
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Hỗ trợ Ubiquiti UniFi, Aruba AOS-CX, HPE Comware v5/v7, HP ProCurve PVOS, Cisco, Fortinet... Tự động đối chiếu cú pháp CLI khác nhau giữa từng phiên bản Firmware.
-              </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base font-bold text-white">
+                {isVi
+                  ? 'CSDL Hãng Thiết Bị, Datasheet & Tập Lệnh CLI theo OS'
+                  : 'Vendor Hardware Datasheet & OS-Version CLI Database'}
+              </h1>
+              <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                {isVi ? 'Đồng bộ Trực tuyến' : 'Live Datasheet Sync'}
+              </span>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-5 flex-1">
+        <div className="p-5 space-y-5 bg-slate-950 text-slate-100">
           {/* Quick Presets */}
           <div>
             <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              Chọn nhanh hãng & dòng thiết bị phổ biến (hoặc tự nhập mã bất kỳ bên dưới):
+              <span>
+                {isVi ? 'Chọn nhanh dòng thiết bị phổ biến:' : 'Quick Vendor & Model Presets:'}
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
               {QUICK_VENDOR_PRESETS.map((preset) => (
@@ -303,37 +313,37 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
           <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div>
               <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                Tên Hãng (Vendor)
+                {isVi ? 'Tên Hãng (Vendor)' : 'Vendor Name'}
               </label>
               <input
                 type="text"
                 value={vendorInput}
                 onChange={(e) => setVendorInput(e.target.value)}
-                placeholder="VD: Ubiquiti UniFi, Aruba, HPE Comware, HP ProCurve..."
+                placeholder="Ubiquiti UniFi, Aruba, HPE Comware..."
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
             <div>
               <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                Mã Thiết bị (Hardware Model)
+                {isVi ? 'Mã Thiết bị (Model)' : 'Hardware Model'}
               </label>
               <input
                 type="text"
                 value={modelInput}
                 onChange={(e) => setModelInput(e.target.value)}
-                placeholder="VD: USW-Pro-48-PoE, J9729A, FlexFabric 5945..."
+                placeholder="USW-Pro-48-PoE, J9729A, FlexFabric 5945..."
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
             <div>
               <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                Phiên bản OS / Firmware
+                {isVi ? 'Phiên bản OS / Firmware' : 'OS / Firmware Version'}
               </label>
               <input
                 type="text"
                 value={osVersionInput}
                 onChange={(e) => setOsVersionInput(e.target.value)}
-                placeholder="VD: UniFi OS 4.0.6, WB.16.11, Comware v7.1..."
+                placeholder="UniFi OS 4.0.6, WB.16.11, Comware v7.1..."
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
@@ -345,12 +355,12 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
               {isSyncing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Đang đồng bộ Datasheet...
+                  <span>{isVi ? 'Đang đồng bộ...' : 'Syncing...'}</span>
                 </>
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  Cập nhật Database về
+                  <span>{isVi ? 'Đồng bộ Datasheet' : 'Sync Datasheet'}</span>
                 </>
               )}
             </button>
@@ -374,7 +384,7 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                       {activeProfile.vendor}
                     </span>
                     <span className="text-[11px] font-mono text-slate-400">
-                      Synced: {activeProfile.syncedAt}
+                      {activeProfile.syncedAt}
                     </span>
                   </div>
                   <div>
@@ -386,19 +396,25 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
 
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-center">
                     <div className="p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <div className="text-[10px] text-slate-400 font-mono">Băng thông</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {isVi ? 'Băng thông' : 'Capacity'}
+                      </div>
                       <div className="text-xs font-bold text-white mt-0.5">
                         {activeProfile.switchingCapacityGbps}
                       </div>
                     </div>
                     <div className="p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <div className="text-[10px] text-slate-400 font-mono">Chuyển mạch</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {isVi ? 'Chuyển mạch' : 'Forwarding'}
+                      </div>
                       <div className="text-xs font-bold text-white mt-0.5">
                         {activeProfile.forwardingRateMpps}
                       </div>
                     </div>
                     <div className="p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <div className="text-[10px] text-slate-400 font-mono">Công suất PoE</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {isVi ? 'Công suất PoE' : 'PoE Budget'}
+                      </div>
                       <div className="text-xs font-bold text-emerald-400 mt-0.5">
                         {activeProfile.poeBudgetWatts}
                       </div>
@@ -414,7 +430,11 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                 <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/25 space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
                     <Layers className="w-4 h-4 text-amber-400" />
-                    Khác biệt lệnh CLI giữa các phiên bản OS / Firmware
+                    <span>
+                      {isVi
+                        ? 'Khác biệt lệnh CLI giữa các phiên bản OS'
+                        : 'OS Version CLI Dialect Differences'}
+                    </span>
                   </div>
                   <ul className="space-y-2">
                     {activeProfile.versionCliDifferences.map((diff, idx) => (
@@ -433,7 +453,9 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                 <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
                     <BookOpen className="w-4 h-4 text-cyan-400" />
-                    Nguồn Datasheet & Diễn đàn Kỹ thuật Uy tín
+                    <span>
+                      {isVi ? 'Nguồn Datasheet & Tài liệu Hãng' : 'Official Datasheet & Vendor Docs'}
+                    </span>
                   </div>
                   <div className="space-y-1.5">
                     {activeProfile.datasheetSources.map((src, idx) => (
@@ -462,7 +484,9 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                     <div className="flex items-center gap-2">
                       <Terminal className="w-4 h-4 text-emerald-400" />
                       <span className="text-xs font-bold text-white">
-                        Mẫu lệnh CLI chuẩn theo phiên bản {activeProfile.osVersion}
+                        {isVi
+                          ? `Mẫu lệnh CLI chuẩn (${activeProfile.osVersion})`
+                          : `Standard CLI Templates (${activeProfile.osVersion})`}
                       </span>
                     </div>
                     <div className="flex gap-1">
@@ -484,7 +508,7 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        System Hardening
+                        Hardening
                       </button>
                       <button
                         onClick={() => setActiveCliTab('acl')}
@@ -513,10 +537,14 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs font-bold text-cyan-200">
                       <Server className="w-4 h-4 text-cyan-400" />
-                      Khởi tạo thiết bị {activeProfile.vendor} ({activeProfile.model}) vào Danh sách Quản lý
+                      <span>
+                        {isVi
+                          ? `Khởi tạo thiết bị ${activeProfile.vendor} vào CMDB`
+                          : `Provision ${activeProfile.vendor} Node to CMDB`}
+                      </span>
                     </div>
                     <span className="text-[10px] font-mono text-cyan-300">
-                      Tự động nạp CLI theo OS {activeProfile.osVersion}
+                      {activeProfile.osVersion}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -563,7 +591,11 @@ export const VendorDatasheetSyncModal: React.FC<VendorDatasheetSyncModalProps> =
                       className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
-                      Thêm Thiết bị & Lưu Tập lệnh vào Database
+                      <span>
+                        {isVi
+                          ? 'Thêm Thiết bị & Lưu Tập lệnh vào CSDL'
+                          : 'Add Node & Save CLI Profile'}
+                      </span>
                     </button>
                   </div>
                 </div>

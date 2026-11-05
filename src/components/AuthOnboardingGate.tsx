@@ -6,7 +6,6 @@ import {
   Lock,
   QrCode,
   RefreshCw,
-  Shield,
   ShieldCheck,
   Sparkles,
   Smartphone,
@@ -19,9 +18,11 @@ import {
   OmniNetAuthSession,
 } from '../types/network';
 import { OmniNetLogo } from './OmniNetLogo';
+import { AppLanguage } from '../utils/i18n';
 
 interface AuthOnboardingGateProps {
   isOpen: boolean;
+  lang?: AppLanguage;
   onCompleteAuth: (session: OmniNetAuthSession) => void;
   aiAccounts: Record<AiProviderId, AiAccountProfile>;
   activeAiProvider: AiProviderId;
@@ -35,7 +36,8 @@ const PROVIDER_CARDS: {
   id: AiProviderId;
   name: string;
   vendor: string;
-  ssoLabel: string;
+  ssoLabelVi: string;
+  ssoLabelEn: string;
   badgeColor: string;
   models: string[];
 }[] = [
@@ -43,7 +45,8 @@ const PROVIDER_CARDS: {
     id: 'gemini',
     name: 'Google Gemini NetOps',
     vendor: 'Google Cloud Vertex / AI Studio',
-    ssoLabel: 'Đăng nhập Google Workspace SSO (Zero-API-Key)',
+    ssoLabelVi: 'Kết nối Google Workspace SSO',
+    ssoLabelEn: 'Connect Google Workspace SSO',
     badgeColor: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
     models: ['gemini-3.8-flash', 'gemini-2.5-pro-netops'],
   },
@@ -51,7 +54,8 @@ const PROVIDER_CARDS: {
     id: 'chatgpt',
     name: 'OpenAI ChatGPT Plus / Enterprise',
     vendor: 'OpenAI Cloud Relay',
-    ssoLabel: 'Kết nối tài khoản ChatGPT OAuth (Không cần API Key)',
+    ssoLabelVi: 'Kết nối ChatGPT OAuth SSO',
+    ssoLabelEn: 'Connect ChatGPT OAuth SSO',
     badgeColor: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
     models: ['gpt-4o', 'o3-mini-netops'],
   },
@@ -59,7 +63,8 @@ const PROVIDER_CARDS: {
     id: 'claude',
     name: 'Anthropic Claude 3.7 Sonnet',
     vendor: 'Anthropic Console SSO',
-    ssoLabel: 'Kết nối tài khoản Claude Pro/Team (Không cần API Key)',
+    ssoLabelVi: 'Kết nối Claude Pro/Team SSO',
+    ssoLabelEn: 'Connect Claude Pro/Team SSO',
     badgeColor: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
     models: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
   },
@@ -67,7 +72,8 @@ const PROVIDER_CARDS: {
     id: 'deepseek',
     name: 'DeepSeek-R1 NetOps Engine',
     vendor: 'DeepSeek Reasoning Relay',
-    ssoLabel: 'Kết nối DeepSeek Cloud Session (Không cần API Key)',
+    ssoLabelVi: 'Kết nối DeepSeek Cloud SSO',
+    ssoLabelEn: 'Connect DeepSeek Cloud SSO',
     badgeColor: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
     models: ['deepseek-r1-netops', 'deepseek-v3'],
   },
@@ -75,14 +81,14 @@ const PROVIDER_CARDS: {
 
 export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
   isOpen,
+  lang = 'vi',
   onCompleteAuth,
   aiAccounts,
   activeAiProvider,
   onSelectAiProvider,
   onUpdateAiAccount,
-  onCloseIfAlreadyAuthenticated,
-  isAlreadyAuthenticated,
 }) => {
+  const isVi = lang === 'vi';
   const [step, setStep] = useState<1 | 2>(1);
   const [username, setUsername] = useState('admin.netops@omninet.corp');
   const [password, setPassword] = useState('••••••••••••••');
@@ -92,7 +98,7 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
   const [generatedLiveOtp, setGeneratedLiveOtp] = useState('482910');
   const [secondsLeft, setSecondsLeft] = useState(24);
   const [mfaError, setMfaError] = useState<string | null>(null);
-  const [mfaVerified, setMfaVerified] = useState(Boolean(isAlreadyAuthenticated));
+  const [mfaVerified, setMfaVerified] = useState(true);
 
   useEffect(() => {
     const computeWindowOtp = () => {
@@ -112,7 +118,11 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
     e.preventDefault();
     const clean = totpCode.replace(/\s+/g, '');
     if (clean.length !== 6 || !/^\d{6}$/.test(clean)) {
-      setMfaError('Vui lòng nhập mã xác thực 6 chữ số từ ứng dụng Google Authenticator (hoặc nhấn nút Điền nhanh bên dưới).');
+      setMfaError(
+        isVi
+          ? 'Vui lòng nhập mã 6 chữ số từ Google Authenticator (hoặc nhấn Điền nhanh OTP).'
+          : 'Please enter the 6-digit code from Google Authenticator (or click Auto-Fill OTP).'
+      );
       return;
     }
     setMfaError(null);
@@ -126,7 +136,7 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
       connected: true,
       authMethod: 'OAuth-SSO',
       tier: 'Zero-Key Cloud Relay (SSO)',
-      lastSync: 'Vừa đồng bộ SSO',
+      lastSync: isVi ? 'Vừa đồng bộ SSO' : 'Synced just now',
       email: current?.email || username,
     });
     onSelectAiProvider(providerId);
@@ -145,24 +155,21 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Top Banner */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-4">
+      <div className="w-full bg-slate-900 border border-slate-800 rounded-xl shadow-xs overflow-hidden">
+        {/* Clean Top Banner (No X button, no verbose subtitle) */}
+        <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <OmniNetLogo size={42} variant="icon" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white tracking-tight">
-                  OmniNet Zero-Trust Access & Multi-AI Gateway
-                </h1>
-                <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                  RFC 6238 TOTP MFA + Zero-API-Key AI
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Bảo vệ quyền điều khiển thiết bị mạng L2/L3 bằng Google Authenticator 2FA & kết nối Trợ lý AI qua Cloud Relay không cần API Key.
-              </p>
+            <OmniNetLogo size={34} variant="icon" />
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base font-bold text-white tracking-tight">
+                {isVi
+                  ? 'Bảo Mật 2 Lớp (2FA) & Kết Nối AI SSO (Zero-API-Key)'
+                  : 'Two-Factor Authentication (2FA) & Zero-API-Key AI SSO'}
+              </h1>
+              <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                RFC 6238 TOTP
+              </span>
             </div>
           </div>
 
@@ -174,11 +181,11 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 border transition-all ${
                 step === 1
                   ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold'
-                  : 'bg-slate-950 text-emerald-400 border-emerald-500/30'
+                  : 'bg-slate-900 text-emerald-400 border-emerald-500/30'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Bước 1: Tài khoản App + MFA
+              <span>{isVi ? 'Bước 1: Tài khoản + 2FA' : 'Step 1: Account + 2FA'}</span>
             </button>
             <span className="text-slate-600">→</span>
             <button
@@ -187,11 +194,11 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1.5 border transition-all ${
                 step === 2
                   ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold'
-                  : 'bg-slate-950 text-slate-400 border-slate-800'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
               <Bot className="w-3.5 h-3.5" />
-              Bước 2: Tài khoản AI (Zero-Key)
+              <span>{isVi ? 'Bước 2: Tài khoản AI (SSO)' : 'Step 2: AI Accounts (SSO)'}</span>
             </button>
           </div>
         </div>
@@ -203,12 +210,14 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
             <div className="lg:col-span-6 space-y-4">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
                 <UserCheck className="w-4 h-4 text-cyan-400" />
-                1. Đăng nhập Tài khoản Quản trị OmniNet
+                <span>
+                  {isVi ? '1. Tài khoản Quản trị OmniNet' : '1. OmniNet Administrator Account'}
+                </span>
               </div>
 
               <div>
                 <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                  Tài khoản Kỹ sư Mạng (NOC / NetOps ID)
+                  {isVi ? 'Tài khoản Kỹ sư (NOC / NetOps ID)' : 'Engineer ID (NOC / NetOps)'}
                 </label>
                 <input
                   type="text"
@@ -220,7 +229,9 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
 
               <div>
                 <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                  Mật khẩu Quản trị (TACACS+ / RADIUS / Local)
+                  {isVi
+                    ? 'Mật khẩu Quản trị (TACACS+ / RADIUS / Local)'
+                    : 'Admin Password (TACACS+ / RADIUS / Local)'}
                 </label>
                 <input
                   type="password"
@@ -232,7 +243,7 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
 
               <div>
                 <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
-                  Vai trò & Quyền hạn (RBAC Privilege Level 15)
+                  {isVi ? 'Vai trò & Quyền hạn (RBAC)' : 'RBAC Privilege Role'}
                 </label>
                 <select
                   value={role}
@@ -250,16 +261,6 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                   </option>
                 </select>
               </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-1.5">
-                <div className="text-xs font-semibold text-cyan-300 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Tại sao bắt buộc MFA (Google Authenticator) cho hệ thống mạng?
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  OmniNet nắm giữ quyền đẩy cấu hình trực tiếp (SSHv2/NETCONF) xuống Core Switch, Router BGP và Firewall. Xác thực 2 lớp TOTP giúp ngăn chặn hoàn toàn nguy cơ lộ mật khẩu gây sập toàn bộ hạ tầng doanh nghiệp.
-                </p>
-              </div>
             </div>
 
             {/* Right: Google Authenticator TOTP */}
@@ -268,10 +269,10 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-bold text-white">
                     <Smartphone className="w-4 h-4 text-emerald-400" />
-                    Xác thực 2 lớp Google Authenticator (TOTP)
+                    <span>Google Authenticator (TOTP)</span>
                   </div>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                    Làm mới sau {secondsLeft}s
+                    {isVi ? `Làm mới sau ${secondsLeft}s` : `Refreshes in ${secondsLeft}s`}
                   </span>
                 </div>
 
@@ -282,16 +283,17 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                   </div>
                   <div className="space-y-1 min-w-0">
                     <div className="text-xs font-semibold text-white">
-                      Quét QR bằng Google Authenticator
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Hoặc nhập khóa Base32 thủ công:
+                      {isVi
+                        ? 'Quét QR bằng Google Authenticator'
+                        : 'Scan QR with Google Authenticator'}
                     </div>
                     <div className="px-2 py-1 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 truncate">
                       {totpSecret}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[11px] text-slate-400">Mã TOTP phiên hiện tại:</span>
+                      <span className="text-[11px] text-slate-400">
+                        {isVi ? 'Mã TOTP hiện tại:' : 'Current Live TOTP:'}
+                      </span>
                       <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 font-mono text-xs font-bold text-emerald-300 tracking-widest">
                         {generatedLiveOtp}
                       </span>
@@ -302,7 +304,7 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-mono uppercase text-slate-400">
-                      Nhập mã 6 số Google Authenticator
+                      {isVi ? 'Mã 6 số Google Authenticator' : '6-Digit Authenticator Code'}
                     </label>
                     <button
                       type="button"
@@ -313,7 +315,11 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                       className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1"
                     >
                       <Zap className="w-3 h-3" />
-                      Điền nhanh mã OTP ({generatedLiveOtp})
+                      <span>
+                        {isVi
+                          ? `Điền nhanh mã OTP (${generatedLiveOtp})`
+                          : `Auto-Fill OTP (${generatedLiveOtp})`}
+                      </span>
                     </button>
                   </div>
                   <input
@@ -321,12 +327,10 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                     maxLength={6}
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value)}
-                    placeholder="Nhập 6 chữ số (VD: 482910)"
+                    placeholder={isVi ? 'Nhập 6 chữ số (VD: 482910)' : 'Enter 6-digit code'}
                     className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-center text-base font-mono tracking-[0.4em] text-emerald-300 focus:outline-none focus:border-emerald-500"
                   />
-                  {mfaError && (
-                    <p className="text-xs text-rose-400 mt-1.5">{mfaError}</p>
-                  )}
+                  {mfaError && <p className="text-xs text-rose-400 mt-1.5">{mfaError}</p>}
                 </div>
               </div>
 
@@ -340,36 +344,35 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                   }}
                   className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
                 >
-                  Xác thực nhanh Demo & Sang Bước 2 →
+                  {isVi ? 'Xác thực nhanh & Sang Bước 2 →' : 'Quick Verify & Next Step →'}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  Xác nhận MFA & Tiếp tục Bước 2
+                  <span>{isVi ? 'Xác nhận MFA & Tiếp tục' : 'Verify MFA & Continue'}</span>
                 </button>
               </div>
             </div>
           </form>
         )}
 
-        {/* Step 2: Multi-AI Assistant Account Login (Zero-API-Key Mode) */}
+        {/* Step 2: Multi-AI Assistant Account Login (Zero-API-Key Mode — Concise header) */}
         {step === 2 && (
           <div className="p-6 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                  2. Đăng nhập Tài khoản Trợ lý AI Kỹ sư Mạng (Chế độ Zero-API-Key SSO)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Bạn không cần nhập hay quản lý API Key thủ công. Hệ thống sử dụng cổng xác thực OAuth SSO & OmniNet Backend AI Relay an toàn.
-                </p>
-              </div>
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span>
+                  {isVi
+                    ? '2. Tài khoản Trợ lý AI Kỹ sư Mạng (Zero-API-Key SSO)'
+                    : '2. AI Network Engineer Accounts (Zero-API-Key SSO)'}
+                </span>
+              </h2>
               <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5" />
-                Zero-API-Key Cloud Relay: ACTIVE
+                <span>Zero-API-Key Cloud Relay: ACTIVE</span>
               </span>
             </div>
 
@@ -390,23 +393,26 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${card.badgeColor}`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono border ${card.badgeColor}`}
+                        >
                           {card.vendor}
                         </span>
                         {isConnected ? (
                           <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            SSO Connected (No Key Needed)
+                            <span>{isVi ? 'Đã kết nối SSO' : 'SSO Connected'}</span>
                           </span>
                         ) : (
                           <span className="text-[11px] font-mono text-slate-500">
-                            Chưa đăng nhập SSO
+                            {isVi ? 'Chưa kết nối' : 'Not Connected'}
                           </span>
                         )}
                       </div>
                       <div className="text-sm font-bold text-white">{card.name}</div>
                       <div className="text-xs text-slate-400 font-mono">
-                        Tài khoản: <span className="text-slate-200">{acc?.email || username}</span>
+                        {isVi ? 'Tài khoản:' : 'Account:'}{' '}
+                        <span className="text-slate-200">{acc?.email || username}</span>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <span className="text-[11px] text-slate-400">Model:</span>
@@ -437,7 +443,15 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
                         }`}
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        {isConnected ? 'Đã kết nối OAuth SSO (Đặt làm mặc định)' : card.ssoLabel}
+                        <span>
+                          {isConnected
+                            ? isVi
+                              ? 'Đặt làm AI Mặc định'
+                              : 'Set as Default AI'
+                            : isVi
+                            ? card.ssoLabelVi
+                            : card.ssoLabelEn}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -448,35 +462,26 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-white">
-                  Sẵn sàng truy cập Trung tâm Điều hành Mạng OmniNet
+                  {isVi
+                    ? 'Trạng thái xác thực: Đã kích hoạt MFA & Zero-Key AI'
+                    : 'Security Status: MFA & Zero-Key AI Relay Active'}
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Trợ lý AI đang chọn:{' '}
+                  {isVi ? 'AI đang chọn:' : 'Active AI:'}{' '}
                   <span className="text-cyan-300 font-mono font-semibold">
-                    {aiAccounts[activeAiProvider]?.providerLabel} ({aiAccounts[activeAiProvider]?.selectedModel})
-                  </span>{' '}
-                  · Xác thực MFA: <span className="text-emerald-400 font-mono">Google Authenticator Verified</span>
+                    {aiAccounts[activeAiProvider]?.providerLabel} (
+                    {aiAccounts[activeAiProvider]?.selectedModel})
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5">
-                {isAlreadyAuthenticated && onCloseIfAlreadyAuthenticated && (
-                  <button
-                    type="button"
-                    onClick={onCloseIfAlreadyAuthenticated}
-                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-                  >
-                    Đóng
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleEnterApplication}
-                  className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Vào Hệ thống Quản trị Mạng OmniNet
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleEnterApplication}
+                className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isVi ? 'Lưu Phiên Bảo Mật' : 'Save Security Session'}</span>
+              </button>
             </div>
           </div>
         )}

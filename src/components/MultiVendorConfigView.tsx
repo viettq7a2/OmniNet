@@ -40,8 +40,11 @@ import {
   runSimulatedDeviceCliCommand,
 } from '../utils/vendorConfigCompiler';
 
+import { AppLanguage } from '../utils/i18n';
+
 interface MultiVendorConfigViewProps {
   devices: NetworkDevice[];
+  lang?: AppLanguage;
   preselectedDeviceId: string | null;
   preselectedTemplate: ConfigTemplateType | null;
   onApplyVisualDeviceUpdate: (
@@ -62,6 +65,7 @@ interface MultiVendorConfigViewProps {
 
 export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
   devices,
+  lang = 'vi',
   preselectedDeviceId,
   preselectedTemplate,
   onApplyVisualDeviceUpdate,
@@ -70,6 +74,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
   onPromoteGoldenBaseline,
   onOpenDatasheetSync,
 }) => {
+  const isVi = lang === 'vi';
   const [activeTab, setActiveTab] = useState<'visual' | 'batch' | 'diff'>(() =>
     preselectedTemplate ? 'batch' : 'visual'
   );
@@ -583,16 +588,11 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Visual Multi-Vendor Device Hook & Configuration Studio
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Connect directly to Switches, Routers, and Firewalls across vendors and configure Ports, VLANs, Security Rules, and Routes visually without memorizing CLI
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {isVi ? 'Cấu hình Đa hãng & Biên dịch CLI' : 'Multi-Vendor Configuration & CLI'}
+        </h1>
 
         {/* 3-Way Mode Switcher + Datasheet Sync */}
         <div className="flex flex-wrap items-center gap-2">
@@ -603,7 +603,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors whitespace-nowrap shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Cập nhật Hãng & Lệnh CLI theo Phiên bản OS</span>
+              <span>{isVi ? 'Cập nhật Hãng & CLI' : 'Sync Vendor CLI DB'}</span>
             </button>
           )}
           <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
@@ -617,7 +617,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Visual Hook & GUI</span>
+              <span>{isVi ? 'Cấu hình Trực quan' : 'Visual GUI'}</span>
             </button>
             <button
               type="button"
@@ -629,7 +629,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
               }`}
             >
               <Terminal className="w-3.5 h-3.5" />
-              <span>Multi-Vendor Batch Push</span>
+              <span>{isVi ? 'Đẩy Lệnh Hàng loạt' : 'Batch CLI Push'}</span>
             </button>
             <button
               type="button"
@@ -641,7 +641,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
               }`}
             >
               <FileDiff className="w-3.5 h-3.5" />
-              <span>Backup, Diff & Rollback</span>
+              <span>{isVi ? 'So sánh & Rollback' : 'Diff & Rollback'}</span>
             </button>
           </div>
         </div>

@@ -336,21 +336,12 @@ ${devices
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & Segmented Sub-Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            {isVi
-              ? 'Trung tâm Vận hành Doanh nghiệp (IPAM · Backup · Cảnh báo · Phân quyền · Báo cáo)'
-              : 'Enterprise Operations Suite (IPAM · Backup · Webhooks · RBAC · Reports)'}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {isVi
-              ? 'Quản lý địa chỉ IP/VLAN, lịch sao lưu cấu hình tự động hàng đêm, bắn cảnh báo Telegram/Teams/Slack, phân quyền NOC và xuất báo cáo định kỳ'
-              : 'Manage IP/VLAN pools, nightly config backups, instant Telegram/Teams/Slack webhooks, RBAC permissions, and executive SLA reports'}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {isVi ? 'Trung tâm Vận hành NOC' : 'NOC Operations Suite'}
+        </h1>
 
         <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
           {[
@@ -472,11 +463,11 @@ ${devices
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 bg-slate-50/70 dark:bg-slate-950/50">
-                    <th className="py-2.5 px-4">IPv4 Address</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Địa chỉ IPv4' : 'IPv4 Address'}</th>
                     <th className="py-2.5 px-4">Hostname</th>
-                    <th className="py-2.5 px-4">MAC Address</th>
-                    <th className="py-2.5 px-4">Vendor · Model</th>
-                    <th className="py-2.5 px-4">Site · Status</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Địa chỉ MAC' : 'MAC Address'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Hãng · Dòng máy' : 'Vendor · Model'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Khu vực' : 'Site'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -492,7 +483,7 @@ ${devices
                           {d.ip}
                           {isConflict && (
                             <span className="ml-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold">
-                              [IP CONFLICT]
+                              {isVi ? '[TRÙNG IP]' : '[IP CONFLICT]'}
                             </span>
                           )}
                         </td>
@@ -553,11 +544,11 @@ ${devices
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 bg-slate-50/70 dark:bg-slate-950/50">
-                    <th className="py-2.5 px-4">Device</th>
-                    <th className="py-2.5 px-4">Vendor · OS</th>
-                    <th className="py-2.5 px-4">Snapshots</th>
-                    <th className="py-2.5 px-4">Golden Baseline Diff</th>
-                    <th className="py-2.5 px-4 text-right">Download .CFG</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Thiết bị' : 'Device'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Hãng · Phiên bản OS' : 'Vendor · OS'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Bản lưu' : 'Snapshots'}</th>
+                    <th className="py-2.5 px-4">{isVi ? 'Đối chiếu Golden Baseline' : 'Golden Baseline Diff'}</th>
+                    <th className="py-2.5 px-4 text-right">{isVi ? 'Tải về .CFG' : 'Download .CFG'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -572,7 +563,7 @@ ${devices
                           {d.vendor} · <span className="font-mono text-slate-500">{d.osVersion}</span>
                         </td>
                         <td className="py-2.5 px-4 font-mono">
-                          {d.configHistory.length} revisions
+                          {d.configHistory.length} {isVi ? 'bản' : 'revisions'}
                         </td>
                         <td className="py-2.5 px-4">
                           {drifted ? (
@@ -621,7 +612,7 @@ ${devices
                   onClick={() => setTestAlertPreview(null)}
                   className="text-xs text-slate-400 hover:text-white"
                 >
-                  Đóng
+                  {isVi ? 'Đóng' : 'Close'}
                 </button>
               </div>
               <pre className="whitespace-pre-wrap leading-relaxed text-emerald-400">
@@ -698,7 +689,9 @@ ${devices
                   )}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  Toàn quyền: Đẩy cấu hình CLI đa hãng, Rollback Golden Baseline, Thêm/Xóa thiết bị, Quản lý 2FA & Webhook.
+                  {isVi
+                    ? 'Toàn quyền: Đẩy cấu hình CLI đa hãng, Rollback Golden Baseline, Thêm/Xóa thiết bị, Quản lý 2FA & Webhook.'
+                    : 'Full privileges: Multi-vendor CLI push, Golden Baseline rollback, Asset CRUD, 2FA & Webhook management.'}
                 </p>
               </button>
 
@@ -718,7 +711,9 @@ ${devices
                   )}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  Giới hạn an toàn: Được xem Dashboard, Sơ đồ Topology, Chẩn đoán AI RCA & hỏi Trợ lý AI; khóa quyền đẩy lệnh CLI & xóa thiết bị.
+                  {isVi
+                    ? 'Giới hạn an toàn: Được xem Dashboard, Sơ đồ Topology, Chẩn đoán AI RCA & hỏi Trợ lý AI; khóa quyền đẩy lệnh CLI & xóa thiết bị.'
+                    : 'Safe read-only mode: View Dashboard, Topology, AI RCA & Copilot; restricts bulk CLI push and asset deletion.'}
                 </p>
               </button>
             </div>

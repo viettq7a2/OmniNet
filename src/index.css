@@ -12,3 +12,39 @@
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes omninetTrafficStream {
+  0% {
+    stroke-dashoffset: 240;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.topo-light-stream {
+  stroke-dasharray: 22 98;
+  animation: omninetTrafficStream 2.2s linear infinite;
+  will-change: stroke-dashoffset;
+}
+
+.topo-light-stream-lag {
+  stroke-dasharray: 26 94;
+  animation: omninetTrafficStream 1.55s linear infinite;
+  will-change: stroke-dashoffset;
+}
+
+.topo-strand-delay-0 {
+  animation-delay: 0s;
+}
+
+.topo-strand-delay-1 {
+  animation-delay: -0.4s;
+}
+
+.topo-strand-delay-2 {
+  animation-delay: -0.8s;
+}
+
+.topo-strand-delay-3 {
+  animation-delay: -1.2s;
+}

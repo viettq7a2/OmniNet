@@ -18,12 +18,12 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
+  ChevronDown,
   Pause,
   Play,
   Power,
   Radar,
   Search,
-  SlidersHorizontal,
   Terminal,
   XCircle,
 } from 'lucide-react';
@@ -34,6 +34,7 @@ import {
   TrafficTelemetryPoint,
 } from '../types/network';
 import { auditDeviceCompliance } from '../utils/vendorConfigCompiler';
+import { AppLanguage } from '../utils/i18n';
 
 interface SummaryDashboardProps {
   devices: NetworkDevice[];
@@ -41,6 +42,7 @@ interface SummaryDashboardProps {
   isStreaming: boolean;
   onToggleStream: () => void;
   isDark: boolean;
+  lang?: AppLanguage;
   onSelectDevice: (device: NetworkDevice) => void;
   onToggleDeviceStatus: (deviceId: string) => void;
   onNavigateToDiscovery: () => void;
@@ -102,15 +104,18 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
   isStreaming,
   onToggleStream,
   isDark,
+  lang = 'vi',
   onSelectDevice,
   onToggleDeviceStatus,
   onNavigateToDiscovery,
   onOpenConfigForDevice,
 }) => {
+  const isVi = lang === 'vi';
   const [selectedSite, setSelectedSite] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | DeviceStatus>('ALL');
   const [nodeSearch, setNodeSearch] = useState<string>('');
   const [windowPoints, setWindowPoints] = useState<12 | 24>(24);
+  const [openActionRowId, setOpenActionRowId] = useState<string | null>(null);
 
   const sites = useMemo(() => {
     return Array.from(new Set(devices.map((d) => d.site)));
@@ -242,47 +247,29 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
   const axisTickColor = isDark ? '#94a3b8' : '#64748b';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={() => setOpenActionRowId(null)}>
       {/* Scope & Live Telemetry Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Network Summary & Real-Time Telemetry
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Live bandwidth utilization and availability state across {counts.total} discovered enterprise nodes
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {isVi ? 'Tổng quan Hạ tầng & Lưu lượng' : 'Network Summary & Live Telemetry'}
+        </h1>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Site Segmented Filter */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setSelectedSite('ALL')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                selectedSite === 'ALL'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              All Sites
-            </button>
+          {/* Compact Site Select Dropdown */}
+          <select
+            value={selectedSite}
+            onChange={(e) => setSelectedSite(e.target.value)}
+            className="px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 cursor-pointer"
+          >
+            <option value="ALL">
+              {isVi ? 'Khu vực: Tất cả Chi nhánh (All Sites)' : 'Scope: All Sites'}
+            </option>
             {sites.map((site) => (
-              <button
-                key={site}
-                type="button"
-                onClick={() => setSelectedSite(site)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  selectedSite === site
-                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
+              <option key={site} value={site}>
                 {site}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
 
           <button
             type="button"
@@ -292,30 +279,31 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
             {isStreaming ? (
               <>
                 <Pause className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Pause Live Feed (2s)</span>
+                <span>{isVi ? 'Tạm dừng Luồng (2s)' : 'Pause Live Feed (2s)'}</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Resume Live Feed</span>
+                <span>{isVi ? 'Tiếp tục Luồng Live' : 'Resume Live Feed'}</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* 4-Column KPI Summary Strip (Single-Elevation Bordered Grid) */}
+      {/* 4-Column KPI Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800">
         <div className="p-5">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Discovered Nodes Availability
+            {isVi ? 'Tỷ lệ Thiết bị Sẵn sàng (SLA)' : 'Discovered Nodes Availability'}
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-2">
             <span className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums font-display">
               {counts.availabilityPct}%
             </span>
             <span className="text-xs font-mono text-slate-500 dark:text-slate-400 tabular-nums">
-              {counts.online + counts.warning} / {counts.total} reachable
+              {counts.online + counts.warning} / {counts.total}{' '}
+              {isVi ? 'kết nối' : 'reachable'}
             </span>
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
@@ -335,7 +323,7 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
 
         <div className="p-5">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Aggregate Real-Time Throughput
+            {isVi ? 'Tổng Băng thông Toàn mạng' : 'Aggregate Real-Time Throughput'}
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-2">
             <span className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums font-display">
@@ -354,7 +342,7 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
 
         <div className="p-5">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Mean Network RTT Latency
+            {isVi ? 'Độ trễ Trung bình (RTT Latency)' : 'Mean Network RTT Latency'}
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-2">
             <span className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums font-display">
@@ -365,26 +353,33 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
             </span>
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>Multi-vendor polling</span>
+            <span>{isVi ? 'Đa hãng' : 'Multi-vendor'}</span>
             <span aria-hidden="true">·</span>
-            <span>2s telemetry interval</span>
+            <span>{isVi ? 'Chu kỳ quét 2s' : '2s interval'}</span>
           </div>
         </div>
 
         <div className="p-5">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Config Drift & CIS Compliance
+            {isVi ? 'Độ lệch Cấu hình & Chuẩn CIS' : 'Config Drift & CIS Compliance'}
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-2">
             <span className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums font-display">
-              {counts.driftNodesCount === 0 ? '100% Synced' : `${counts.driftNodesCount} Drift`}
+              {counts.driftNodesCount === 0
+                ? isVi
+                  ? '100% Chuẩn'
+                  : '100% Synced'
+                : `${counts.driftNodesCount} Drift`}
             </span>
             <span className="text-xs font-mono text-amber-600 dark:text-amber-400 tabular-nums">
-              {counts.complianceIssuesCount} findings
+              {counts.complianceIssuesCount} {isVi ? 'cảnh báo CIS' : 'findings'}
             </span>
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>{ new Set(scopedDevices.map((d) => d.vendor)).size } Vendors</span>
+            <span>
+              {new Set(scopedDevices.map((d) => d.vendor)).size}{' '}
+              {isVi ? 'Hãng thiết bị' : 'Vendors'}
+            </span>
             <span aria-hidden="true">·</span>
             <span>Running vs Baseline</span>
           </div>
@@ -398,14 +393,16 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
           <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Real-Time Network Traffic Throughput
+                {isVi
+                  ? 'Biểu đồ Lưu lượng Mạng Thời gian thực (Mbps)'
+                  : 'Real-Time Network Traffic Throughput'}
               </h2>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 <span>Inbound Rx</span>
                 <span aria-hidden="true">·</span>
                 <span>Outbound Tx</span>
                 <span aria-hidden="true">·</span>
-                <span>Firewall Inspected Stream (Mbps)</span>
+                <span>Firewall Inspected (Mbps)</span>
               </div>
             </div>
 
@@ -524,19 +521,21 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
           <div>
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Discovered Node Status
+                {isVi ? 'Trạng thái Thiết bị' : 'Discovered Node Status'}
               </h2>
               <button
                 type="button"
                 onClick={onNavigateToDiscovery}
                 className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap shrink-0"
               >
-                <span>Scan Subnet</span>
+                <span>{isVi ? 'Quét mạng' : 'Scan Subnet'}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Click any segment below to filter node matrix
+              {isVi
+                ? 'Nhấp vào từng phần biểu đồ để lọc danh sách bên dưới'
+                : 'Click any segment below to filter node matrix'}
             </p>
           </div>
 
@@ -656,10 +655,14 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
           <div className="flex items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Throughput by Discovered Node (Top Active & Offline)
+                {isVi
+                  ? 'Băng thông theo từng Thiết bị (Top Node)'
+                  : 'Throughput by Discovered Node (Top Active & Offline)'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Real-time Inbound Rx vs Outbound Tx bandwidth per node in Mbps
+                {isVi
+                  ? 'So sánh lưu lượng vào (Rx) và ra (Tx) theo thời gian thực (Mbps)'
+                  : 'Real-time Inbound Rx vs Outbound Tx bandwidth per node in Mbps'}
               </p>
             </div>
           </div>
@@ -694,10 +697,14 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between">
           <div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              Hardware Roles & Multi-Vendor Distribution
+              {isVi
+                ? 'Phân bổ Vai trò Phần cứng & Đa hãng'
+                : 'Hardware Roles & Multi-Vendor Distribution'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Breakdown of discovered routers, switches, firewalls, wireless, and servers
+              {isVi
+                ? 'Tỷ lệ Router, Switch, Firewall, Wireless và Server trong hệ thống'
+                : 'Breakdown of discovered routers, switches, firewalls, wireless, and servers'}
             </p>
           </div>
 
@@ -742,33 +749,31 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              Discovered Nodes Live Status Matrix
+              {isVi
+                ? 'Danh sách Trạng thái Thiết bị Thời gian thực'
+                : 'Discovered Nodes Live Status Matrix'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Inspect telemetry, open multi-vendor CLI studio, or simulate node failover/recovery to observe live chart response
+              {isVi
+                ? 'Nhấp vào thiết bị để xem chi tiết phần cứng hoặc mở menu Tác vụ (▾) ở cột bên phải'
+                : 'Click any row to inspect hardware telemetry or use the compact Actions (▾) menu'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Status Filter Buttons */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              {(['ALL', DeviceStatus.Online, DeviceStatus.Warning, DeviceStatus.Offline] as const).map(
-                (st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors capitalize whitespace-nowrap shrink-0 ${
-                      statusFilter === st
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    {st === 'ALL' ? `All (${scopedDevices.length})` : st}
-                  </button>
-                )
-              )}
-            </div>
+            {/* Compact Status Select Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'ALL' | DeviceStatus)}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="ALL">
+                {isVi ? `Tất cả trạng thái (${scopedDevices.length})` : `All Statuses (${scopedDevices.length})`}
+              </option>
+              <option value={DeviceStatus.Online}>Online</option>
+              <option value={DeviceStatus.Warning}>Warning</option>
+              <option value={DeviceStatus.Offline}>Offline</option>
+            </select>
 
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -776,7 +781,9 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
                 type="text"
                 value={nodeSearch}
                 onChange={(e) => setNodeSearch(e.target.value)}
-                placeholder="Search hostname, IP, vendor..."
+                placeholder={
+                  isVi ? 'Tìm hostname, IP, hãng...' : 'Search hostname, IP, vendor...'
+                }
                 className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-56"
               />
             </div>
@@ -787,10 +794,9 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
           <div className="py-12 px-6 text-center">
             <Radar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
             <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-              No discovered nodes match the current filter
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Clear your status or search filter, or run a subnet scan to discover new devices.
+              {isVi
+                ? 'Không tìm thấy thiết bị phù hợp với bộ lọc'
+                : 'No discovered nodes match the current filter'}
             </p>
             <button
               type="button"
@@ -800,7 +806,7 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
               }}
               className="mt-4 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Reset Filters
+              {isVi ? 'Xóa bộ lọc' : 'Reset Filters'}
             </button>
           </div>
         ) : (
@@ -808,13 +814,15 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-900/50">
-                  <th className="py-2.5 px-4">Node Hostname & Hardware</th>
-                  <th className="py-2.5 px-4">Vendor · Role</th>
-                  <th className="py-2.5 px-4">Mgmt IP · Site</th>
-                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4">
+                    {isVi ? 'Hostname & Phần cứng' : 'Node Hostname & Hardware'}
+                  </th>
+                  <th className="py-2.5 px-4">{isVi ? 'Hãng · Vai trò' : 'Vendor · Role'}</th>
+                  <th className="py-2.5 px-4">{isVi ? 'IP Quản trị · Khu vực' : 'Mgmt IP · Site'}</th>
+                  <th className="py-2.5 px-4">{isVi ? 'Trạng thái' : 'Status'}</th>
                   <th className="py-2.5 px-4 text-right">Rx / Tx (Mbps)</th>
                   <th className="py-2.5 px-4 text-right">CPU · RTT</th>
-                  <th className="py-2.5 px-4 text-right">Actions</th>
+                  <th className="py-2.5 px-4 text-right">{isVi ? 'Tác vụ' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
@@ -856,10 +864,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            <span>Warning (Degraded)</span>
+                            <span>Warning</span>
                           </span>
                           <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-                            Bấm để xem lý do & cách fix
+                            {isVi ? 'Bấm xem nguyên nhân & cách xử lý' : 'Click to inspect & remediate'}
                           </div>
                         </div>
                       )}
@@ -867,10 +875,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 font-medium text-rose-700 dark:text-rose-400">
                             <XCircle className="w-3.5 h-3.5 shrink-0" />
-                            <span>Offline (Connect Failed)</span>
+                            <span>Offline</span>
                           </span>
                           <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5">
-                            Mất uplink L1/L2 · Bấm xem cách fix
+                            {isVi ? 'Mất kết nối L1/L2 · Bấm xem cách xử lý' : 'Uplink down · Click for RCA fix'}
                           </div>
                         </div>
                       )}
@@ -894,53 +902,80 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
                       )}
                     </td>
                     <td
-                      className="py-3 px-4 text-right whitespace-nowrap"
+                      className="py-3 px-4 text-right whitespace-nowrap relative"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="inline-flex items-center justify-end gap-1.5">
-                        {node.status !== DeviceStatus.Online && (
-                          <button
-                            type="button"
-                            onClick={() => onSelectDevice(node)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors whitespace-nowrap shrink-0"
-                          >
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>Lý do Lỗi & Fix</span>
-                          </button>
-                        )}
+                      <div className="inline-block relative">
                         <button
                           type="button"
-                          onClick={() => onToggleDeviceStatus(node.id)}
-                          title={
-                            node.status === DeviceStatus.Offline
-                              ? 'Bring node online'
-                              : 'Simulate node offline'
+                          onClick={() =>
+                            setOpenActionRowId((prev) => (prev === node.id ? null : node.id))
                           }
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors whitespace-nowrap shrink-0 ${
-                            node.status === DeviceStatus.Offline
-                              ? 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                              : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
-                          <Power className="w-3 h-3" />
-                          <span>{node.status === DeviceStatus.Offline ? 'Recover' : 'Failover'}</span>
+                          <span>{isVi ? 'Tác vụ' : 'Actions'}</span>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenConfigForDevice(node.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0"
-                        >
-                          <Terminal className="w-3 h-3" />
-                          <span>CLI</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onSelectDevice(node)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0"
-                        >
-                          <Activity className="w-3 h-3" />
-                          <span>Inspect</span>
-                        </button>
+
+                        {openActionRowId === node.id && (
+                          <div className="absolute right-0 mt-1 w-52 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl py-1 z-30 text-left text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionRowId(null);
+                                onSelectDevice(node);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                            >
+                              <Activity className="w-3.5 h-3.5 text-blue-500" />
+                              <span>
+                                {isVi ? 'Xem chi tiết & Chẩn đoán' : 'Inspect & RCA Details'}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionRowId(null);
+                                onOpenConfigForDevice(node.id);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                            >
+                              <Terminal className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>
+                                {isVi ? 'Cấu hình CLI & Trực quan' : 'Open CLI & Visual Config'}
+                              </span>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionRowId(null);
+                                onToggleDeviceStatus(node.id);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                            >
+                              <Power
+                                className={`w-3.5 h-3.5 ${
+                                  node.status === DeviceStatus.Offline
+                                    ? 'text-emerald-500'
+                                    : 'text-rose-500'
+                                }`}
+                              />
+                              <span>
+                                {node.status === DeviceStatus.Offline
+                                  ? isVi
+                                    ? 'Khôi phục thiết bị (Online)'
+                                    : 'Recover Node Online'
+                                  : isVi
+                                  ? 'Giả lập mất kết nối (Offline)'
+                                  : 'Simulate Failover (Offline)'}
+                              </span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

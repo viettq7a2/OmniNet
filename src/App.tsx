@@ -3,6 +3,8 @@ import {
   BookOpen,
   Cable,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Cpu,
   Database,
   Globe,
@@ -12,6 +14,8 @@ import {
   Monitor,
   Moon,
   Network,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radar,
   RotateCcw,
   ShieldCheck,
@@ -68,7 +72,11 @@ type NavTab =
   | 'config'
   | 'discovery'
   | 'inventory'
-  | 'operations';
+  | 'operations'
+  | 'datasheet'
+  | 'deploy'
+  | 'guide'
+  | 'auth';
 
 const STORAGE_KEY_DEVICES = 'omninet_enterprise_devices_v3';
 const STORAGE_KEY_THEME = 'omninet_enterprise_theme_v1';
@@ -170,7 +178,6 @@ export default function App() {
       zeroApiKeyMode: true,
     };
   });
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   const [aiAccounts, setAiAccounts] = useState<Record<AiProviderId, AiAccountProfile>>(() => {
     try {
@@ -249,9 +256,6 @@ export default function App() {
       },
     ];
   });
-  const [isDatasheetModalOpen, setIsDatasheetModalOpen] = useState<boolean>(false);
-  const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
 
   const handleSaveDatasheetProfile = useCallback((profile: VendorDatasheetProfile) => {
     setSyncedDatasheets((prev) => {
@@ -1153,22 +1157,66 @@ export default function App() {
     showToast('Restored default enterprise lab inventory & topology.');
   };
 
-  const navItems: {
-    id: NavTab;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openCategories, setOpenCategories] = useState<
+    Record<'monitoring' | 'operations' | 'intelligence' | 'utilities', boolean>
+  >({
+    monitoring: true,
+    operations: true,
+    intelligence: true,
+    utilities: true,
+  });
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+
+  const navCategories: {
+    key: 'monitoring' | 'operations' | 'intelligence' | 'utilities';
+    title: string;
+    items: {
+      id: NavTab;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+    }[];
   }[] = [
-    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
-    { id: 'topology', label: t.nav.topology, icon: Network },
-    { id: 'ai-rca', label: t.nav.aiRca, icon: Sparkles },
-    { id: 'ports-services', label: t.nav.portsServices, icon: Cable },
-    { id: 'config', label: t.nav.config, icon: Sliders },
-    { id: 'discovery', label: t.nav.discovery, icon: Radar },
-    { id: 'inventory', label: t.nav.inventory, icon: Database },
-    { id: 'operations', label: t.nav.operations, icon: Wrench },
+    {
+      key: 'monitoring',
+      title: t.categories.monitoring,
+      items: [
+        { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
+        { id: 'topology', label: t.nav.topology, icon: Network },
+        { id: 'ports-services', label: t.nav.portsServices, icon: Cable },
+      ],
+    },
+    {
+      key: 'operations',
+      title: t.categories.operations,
+      items: [
+        { id: 'config', label: t.nav.config, icon: Sliders },
+        { id: 'operations', label: t.nav.operations, icon: Wrench },
+        { id: 'discovery', label: t.nav.discovery, icon: Radar },
+      ],
+    },
+    {
+      key: 'intelligence',
+      title: t.categories.intelligence,
+      items: [
+        { id: 'ai-rca', label: t.nav.aiRca, icon: Sparkles },
+        { id: 'inventory', label: t.nav.inventory, icon: Database },
+      ],
+    },
+    {
+      key: 'utilities',
+      title: t.sidebar.systemTools,
+      items: [
+        { id: 'datasheet', label: t.header.datasheetBtn, icon: Cpu },
+        { id: 'deploy', label: t.header.deployBtn, icon: Monitor },
+        { id: 'guide', label: t.header.guideBtn, icon: BookOpen },
+        { id: 'auth', label: t.header.authBtn, icon: Lock },
+      ],
+    },
   ];
 
-  const activeBreadcrumb = navItems.find((n) => n.id === activeTab)?.label || t.nav.dashboard;
+  const allNavItems = navCategories.flatMap((c) => c.items);
+  const activeBreadcrumb = allNavItems.find((n) => n.id === activeTab)?.label || t.nav.dashboard;
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -1180,25 +1228,41 @@ export default function App() {
         />
       )}
 
-      {/* Left Sidebar Navigation — Clean, Uncluttered Enterprise Layout */}
+      {/* Left Sidebar Navigation — Categorized Accordion & Slim Rail Support */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-transform lg:translate-x-0 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 ${
+          sidebarCollapsed ? 'lg:w-16 w-60' : 'w-60'
+        } bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-all duration-200 lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div>
-          <div className="h-14 px-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <OmniNetLogo size={32} variant="icon" />
-              <div>
-                <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                  Omni<span className="text-sky-500 dark:text-sky-400">Net</span>
+        <div className="overflow-y-auto">
+          <div className="h-14 px-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <OmniNetLogo size={30} variant="icon" />
+              {!sidebarCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none truncate">
+                    Omni<span className="text-sky-500 dark:text-sky-400">Net</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono truncate">
+                    Enterprise NCM v3.5
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                  Enterprise NCM v3.5
-                </div>
-              </div>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((c) => !c)}
+              className="hidden lg:inline-flex p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              title={sidebarCollapsed ? t.sidebar.expandMenu : t.sidebar.collapseMenu}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}
@@ -1208,91 +1272,104 @@ export default function App() {
             </button>
           </div>
 
-          <nav className="p-3 space-y-0.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+          <nav className="p-2.5 space-y-2">
+            {navCategories.map((cat) => {
+              const isOpen = openCategories[cat.key];
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileNavOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </button>
+                <div key={cat.key} className="space-y-0.5">
+                  {!sidebarCollapsed && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenCategories((prev) => ({
+                          ...prev,
+                          [cat.key]: !prev[cat.key],
+                        }))
+                      }
+                      className="w-full flex items-center justify-between px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <span className="truncate">{cat.title}</span>
+                      {isOpen ? (
+                        <ChevronDown className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3 h-3 shrink-0" />
+                      )}
+                    </button>
+                  )}
+
+                  {(isOpen || sidebarCollapsed) &&
+                    cat.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          title={item.label}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileNavOpen(false);
+                          }}
+                          className={`w-full flex items-center ${
+                            sidebarCollapsed ? 'justify-center px-2' : 'gap-2.5 px-3'
+                          } py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                        </button>
+                      );
+                    })}
+                </div>
               );
             })}
           </nav>
-
-          {/* Subtle System Utilities List */}
-          <div className="px-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70 space-y-0.5">
-            <div className="px-3 py-1 text-[10px] font-mono uppercase text-slate-400">
-              {t.sidebar.systemTools}
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsDatasheetModalOpen(true)}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-            >
-              <Cpu className="w-3.5 h-3.5 shrink-0 text-sky-500" />
-              <span className="truncate">{t.header.datasheetBtn}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsDeployModalOpen(true)}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-            >
-              <Monitor className="w-3.5 h-3.5 shrink-0 text-blue-500" />
-              <span className="truncate">{t.header.deployBtn}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsGuideModalOpen(true)}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-            >
-              <BookOpen className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-              <span className="truncate">{t.header.guideBtn}</span>
-            </button>
-          </div>
         </div>
 
         {/* Sidebar Footer Summary */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>{t.sidebar.managedNodes}</span>
-            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-              {devices.length}
-            </span>
+        {!sidebarCollapsed ? (
+          <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
+              <span>{t.sidebar.managedNodes}</span>
+              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                {devices.length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
+              <span>{t.sidebar.openAlerts}</span>
+              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                {alerts.filter((a) => !a.acknowledged).length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetDemoData}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{t.sidebar.resetLab}</span>
+            </button>
           </div>
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>{t.sidebar.openAlerts}</span>
-            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-              {alerts.filter((a) => !a.acknowledged).length}
-            </span>
+        ) : (
+          <div className="p-2 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetDemoData}
+              title={t.sidebar.resetLab}
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleResetDemoData}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>{t.sidebar.resetLab}</span>
-          </button>
-        </div>
+        )}
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Clean, Decluttered Top Header */}
+        {/* Clean, Decluttered Top Header with Consolidated Dropdown Menu */}
         <header className="h-14 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 sticky top-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -1347,51 +1424,85 @@ export default function App() {
                   ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
                   : 'border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
               }`}
-              title="Nhấn để chuyển đổi nhanh giữa quyền Kỹ sư Trưởng (Admin) và Trực ca NOC L1 (Chỉ xem)"
+              title={
+                lang === 'vi'
+                  ? 'Chuyển đổi nhanh giữa quyền Kỹ sư Trưởng (Admin) và Trực ca NOC L1 (Chỉ xem)'
+                  : 'Toggle between Admin (Read/Write) and NOC L1 (Read-Only) role'
+              }
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
               <span>{activeRole === 'admin' ? t.header.roleAdmin : t.header.roleNocL1}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsDatasheetModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
-              title="Thêm hãng/mã thiết bị thiếu & đồng bộ Datasheet CLI theo phiên bản OS"
-            >
-              <Cpu className="w-3.5 h-3.5 text-sky-500" />
-              <span className="hidden sm:inline">{t.header.datasheetBtn}</span>
-            </button>
+            {/* Consolidated System & Tools Dropdown Menu with Chevron */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setHeaderMenuOpen((o) => !o)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap"
+              >
+                <Cpu className="w-3.5 h-3.5 text-sky-500" />
+                <span>{t.header.quickToolsBtn}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setIsGuideModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
-              title="Sổ tay Hướng dẫn Sử dụng Toàn tập & Giải pháp cho Thiết bị đời cũ"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden xl:inline">{t.header.guideBtn}</span>
-            </button>
+              {headerMenuOpen && (
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setHeaderMenuOpen(false)}
+                />
+              )}
 
-            <button
-              type="button"
-              onClick={() => setIsDeployModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
-              title="Tải bộ cài đặt Windows Desktop/Server, Docker Compose và Logo OmniNet"
-            >
-              <Monitor className="w-3.5 h-3.5 text-blue-500" />
-              <span className="hidden lg:inline">{t.header.deployBtn}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
-              title="Đăng nhập Tài khoản OmniNet (Google Authenticator 2FA) & Tài khoản AI (Zero-API-Key)"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.header.authBtn}</span>
-            </button>
+              {headerMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl py-1.5 z-50 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('datasheet');
+                      setHeaderMenuOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                    <span>{t.header.datasheetBtn}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('guide');
+                      setHeaderMenuOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>{t.header.guideBtn}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('deploy');
+                      setHeaderMenuOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <Monitor className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>{t.header.deployBtn}</span>
+                  </button>
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('auth');
+                      setHeaderMenuOpen(false);
+                    }}
+                    className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 font-semibold text-blue-600 dark:text-sky-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                  >
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t.header.authBtn}</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
@@ -1409,7 +1520,7 @@ export default function App() {
         </header>
 
         {/* Active View Viewport */}
-        <main className="flex-1 p-6 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 p-4 max-w-[1920px] w-full mx-auto">
           {activeTab === 'dashboard' && (
             <SummaryDashboard
               devices={devices}
@@ -1417,6 +1528,7 @@ export default function App() {
               isStreaming={isStreaming}
               onToggleStream={() => setIsStreaming((s) => !s)}
               isDark={isDark}
+              lang={lang}
               onSelectDevice={(dev) => setInspectedDeviceId(dev.id)}
               onToggleDeviceStatus={handleToggleDeviceStatus}
               onNavigateToDiscovery={() => setActiveTab('discovery')}
@@ -1432,6 +1544,7 @@ export default function App() {
             <AiDiagnosticsRcaView
               devices={devices}
               alerts={alerts}
+              lang={lang}
               initialDeviceId={aiRcaTargetDeviceId}
               onSelectDeviceDrawer={(dev) => setInspectedDeviceId(dev.id)}
               onOpenInConfigHub={(deviceId) => {
@@ -1449,6 +1562,7 @@ export default function App() {
               devices={devices}
               alerts={alerts}
               isDark={isDark}
+              lang={lang}
               onSelectDevice={(dev) => setInspectedDeviceId(dev.id)}
               onToggleDeviceStatus={handleToggleDeviceStatus}
               onMoveNodePosition={handleMoveNodePosition}
@@ -1478,6 +1592,7 @@ export default function App() {
           {activeTab === 'ports-services' && (
             <PortsAndServicesView
               devices={devices}
+              lang={lang}
               onTogglePortAdminStatus={handleTogglePortAdminStatus}
               onUpdatePortVlanOrDesc={handleUpdatePortVlanOrDesc}
               onServiceAction={handleServiceAction}
@@ -1493,19 +1608,21 @@ export default function App() {
           {activeTab === 'config' && (
             <MultiVendorConfigView
               devices={devices}
+              lang={lang}
               preselectedDeviceId={configTargetDeviceId}
               preselectedTemplate={configTargetTemplate}
               onApplyVisualDeviceUpdate={handleApplyVisualDeviceUpdate}
               onPushConfigToDevices={handlePushConfigToDevices}
               onRollbackDeviceConfig={handleRollbackDeviceConfig}
               onPromoteGoldenBaseline={handlePromoteGoldenBaseline}
-              onOpenDatasheetSync={() => setIsDatasheetModalOpen(true)}
+              onOpenDatasheetSync={() => setActiveTab('datasheet')}
             />
           )}
 
           {activeTab === 'discovery' && (
             <DiscoveryView
               devices={devices}
+              lang={lang}
               schedules={schedules}
               onToggleSchedule={(id) =>
                 setSchedules((prev) =>
@@ -1519,11 +1636,12 @@ export default function App() {
           {activeTab === 'inventory' && (
             <AssetInventoryView
               devices={devices}
+              lang={lang}
               onSelectDevice={(dev) => setInspectedDeviceId(dev.id)}
               onAddDevice={handleAddManualDevice}
               onUpdateDevice={handleUpdateDevice}
               onDeleteDevice={handleDeleteDevice}
-              onOpenDatasheetSync={() => setIsDatasheetModalOpen(true)}
+              onOpenDatasheetSync={() => setActiveTab('datasheet')}
             />
           )}
 
@@ -1553,54 +1671,53 @@ export default function App() {
               }}
             />
           )}
+
+          {activeTab === 'datasheet' && (
+            <VendorDatasheetSyncModal
+              isOpen={true}
+              lang={lang}
+              syncedProfiles={syncedDatasheets}
+              onSaveProfile={handleSaveDatasheetProfile}
+              onAddDeviceFromProfile={(newDev) => {
+                handleAddManualDevice(newDev);
+              }}
+            />
+          )}
+
+          {activeTab === 'deploy' && (
+            <PlatformDeploymentModal isOpen={true} lang={lang} />
+          )}
+
+          {activeTab === 'guide' && (
+            <UserGuideModal isOpen={true} lang={lang} />
+          )}
+
+          {activeTab === 'auth' && (
+            <AuthOnboardingGate
+              isOpen={true}
+              lang={lang}
+              onCompleteAuth={(session) => {
+                setAuthSession(session);
+                try {
+                  localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(session));
+                } catch {
+                  // ignore
+                }
+                showToast(
+                  lang === 'vi'
+                    ? `Đã lưu phiên bảo mật MFA (${session.mfaMethod}) & Trợ lý AI Zero-API-Key!`
+                    : `Saved MFA session (${session.mfaMethod}) & Zero-API-Key AI Relay!`
+                );
+              }}
+              aiAccounts={aiAccounts}
+              activeAiProvider={activeAiProvider}
+              onSelectAiProvider={setActiveAiProvider}
+              onUpdateAiAccount={handleUpdateAiAccount}
+              isAlreadyAuthenticated={authSession.isAuthenticated}
+            />
+          )}
         </main>
       </div>
-
-      {/* Real-Time Vendor Datasheet & OS-Version CLI Sync Modal */}
-      <VendorDatasheetSyncModal
-        isOpen={isDatasheetModalOpen}
-        onClose={() => setIsDatasheetModalOpen(false)}
-        syncedProfiles={syncedDatasheets}
-        onSaveProfile={handleSaveDatasheetProfile}
-        onAddDeviceFromProfile={(newDev) => {
-          handleAddManualDevice(newDev);
-        }}
-      />
-
-      {/* Windows & Docker Deployment + Official Brand Logo Modal */}
-      <PlatformDeploymentModal
-        isOpen={isDeployModalOpen}
-        onClose={() => setIsDeployModalOpen(false)}
-      />
-
-      {/* Full Interactive User Manual & Legacy Device Guide Modal */}
-      <UserGuideModal
-        isOpen={isGuideModalOpen}
-        onClose={() => setIsGuideModalOpen(false)}
-      />
-
-      {/* 2-Step OmniNet Account + Google Authenticator MFA + Zero-API-Key AI Login Gate */}
-      <AuthOnboardingGate
-        isOpen={isAuthModalOpen}
-        onCompleteAuth={(session) => {
-          setAuthSession(session);
-          setIsAuthModalOpen(false);
-          try {
-            localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(session));
-          } catch {
-            // ignore
-          }
-          showToast(
-            `Đã xác thực MFA (${session.mfaMethod}) & kết nối Trợ lý AI chế độ Zero-API-Key!`
-          );
-        }}
-        aiAccounts={aiAccounts}
-        activeAiProvider={activeAiProvider}
-        onSelectAiProvider={setActiveAiProvider}
-        onUpdateAiAccount={handleUpdateAiAccount}
-        isAlreadyAuthenticated={authSession.isAuthenticated}
-        onCloseIfAlreadyAuthenticated={() => setIsAuthModalOpen(false)}
-      />
 
       {/* Device Inspector Slide-over */}
       <DeviceDetailDrawer
@@ -1634,6 +1751,7 @@ export default function App() {
         devices={devices}
         alerts={alerts}
         activeTabLabel={activeBreadcrumb}
+        lang={lang}
         externalPromptRequest={floatingAiPrompt}
         onClearExternalPrompt={() => setFloatingAiPrompt(null)}
         onAutoFixDeviceConnection={(deviceId, remediationCli) =>

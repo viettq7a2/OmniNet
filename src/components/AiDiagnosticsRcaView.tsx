@@ -56,9 +56,12 @@ interface LiveProbeResult {
   probedAt: string;
 }
 
+import { AppLanguage } from '../utils/i18n';
+
 interface AiDiagnosticsRcaViewProps {
   devices: NetworkDevice[];
   alerts: NetworkAlert[];
+  lang?: AppLanguage;
   initialDeviceId?: string | null;
   onSelectDeviceDrawer: (device: NetworkDevice) => void;
   onOpenInConfigHub: (deviceId: string) => void;
@@ -120,21 +123,29 @@ const INITIAL_AI_PROVIDERS: AiProviderAccount[] = [
   },
 ];
 
-const COPILOT_PRESETS = [
-  'Phân tích nguyên nhân gốc sự cố mất kết nối và dịch vụ dừng trên các nút mạng hiện tại',
-  'Kiểm tra độ lệch cấu hình (Config Drift) và rủi ro bảo mật CIS trên toàn bộ Router & Firewall',
-  'Sinh kịch bản CLI khắc phục lỗi cổng trunk và đồng bộ chuẩn CIS cho Cisco IOS-XE & Fortinet',
+const COPILOT_PRESETS_VI = [
+  'Phân tích nguyên nhân gốc sự cố mất kết nối trên các nút mạng',
+  'Kiểm tra lệch cấu hình (Config Drift) & chuẩn bảo mật CIS',
+  'Sinh kịch bản CLI khắc phục lỗi cổng trunk cho Cisco & Fortinet',
+];
+
+const COPILOT_PRESETS_EN = [
+  'Analyze root cause of offline nodes and stopped services',
+  'Audit configuration drift & CIS security compliance across routers',
+  'Generate trunk remediation & CIS hardening CLI for Cisco & Fortinet',
 ];
 
 export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
   devices,
   alerts,
+  lang = 'vi',
   initialDeviceId,
   onSelectDeviceDrawer,
   onOpenInConfigHub,
   onApplyRemediation,
   onAddDiscoveredDevice,
 }) => {
+  const isVi = lang === 'vi';
   const defaultDevice =
     devices.find((d) => d.id === initialDeviceId) ||
     devices.find((d) => d.status === DeviceStatus.Offline) ||
@@ -603,29 +614,22 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
     aiProviders.find((p) => p.id === loginTargetId) || aiProviders[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Multi-AI Provider Sign-In & Model Switcher Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-xs font-mono uppercase tracking-wider text-blue-600 dark:text-blue-400 font-semibold">
-                OmniNet Multi-AI Engineer Assistant & RCA Hub
-              </span>
-            </div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Trợ lý Kỹ sư Đa Nền tảng AI (Gemini · ChatGPT · Claude · DeepSeek)
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Đăng nhập và chuyển đổi linh hoạt giữa các mô hình AI để chẩn đoán sự cố đa tầng (L1–L7) và biên dịch CLI đa nhà mạng.
-            </p>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {isVi
+                ? 'Chẩn đoán AI & Phân tích Nguyên nhân Gốc (RCA)'
+                : 'AI Diagnostics & Root Cause Analysis (RCA)'}
+            </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <div className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs flex items-center gap-2">
               <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-slate-500">Đang dùng:</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {activeProvider.name}
               </span>
@@ -638,10 +642,14 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
             <button
               type="button"
               onClick={() => openProviderLoginModal(activeProvider.id)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
             >
               <KeyRound className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Quản lý Đăng nhập AI ({aiProviders.filter((p) => p.loggedIn).length}/4)</span>
+              <span>
+                {isVi
+                  ? `Tài khoản AI (${aiProviders.filter((p) => p.loggedIn).length}/4)`
+                  : `AI Accounts (${aiProviders.filter((p) => p.loggedIn).length}/4)`}
+              </span>
             </button>
           </div>
         </div>
@@ -679,7 +687,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
 
                   {prov.loggedIn ? (
                     <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-medium">
-                      {isActive ? 'Đang chọn' : 'Đã đăng nhập'}
+                      {isActive ? (isVi ? 'Đang chọn' : 'Active') : isVi ? 'Đã kết nối' : 'Connected'}
                     </span>
                   ) : (
                     <button
@@ -691,7 +699,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-600 text-white hover:bg-blue-700"
                     >
                       <LogIn className="w-3 h-3" />
-                      <span>Đăng nhập</span>
+                      <span>{isVi ? 'Đăng nhập' : 'Sign In'}</span>
                     </button>
                   )}
                 </div>
@@ -709,7 +717,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                       }}
                       className="text-blue-600 dark:text-blue-400 hover:underline shrink-0 ml-2"
                     >
-                      Đổi model
+                      {isVi ? 'Đổi model' : 'Model'}
                     </button>
                   )}
                 </div>
@@ -727,7 +735,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>1. Chọn Nút Mạng / Sự cố Cần Chẩn đoán</span>
+                <span>{isVi ? '1. Chọn Thiết bị Cần Chẩn đoán' : '1. Select Target Node'}</span>
               </h3>
               <span className="text-xs font-mono text-slate-500 tabular-nums">
                 {devices.length} nodes
@@ -777,27 +785,28 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         {dev.status === DeviceStatus.Offline && (
                           <span className="text-rose-600 dark:text-rose-400 font-medium">
-                            Mất kết nối (Offline)
+                            {isVi ? 'Mất kết nối (Offline)' : 'Offline (Unreachable)'}
                           </span>
                         )}
                         {dev.status === DeviceStatus.Warning && (
                           <span className="text-amber-600 dark:text-amber-400 font-medium">
-                            Cảnh báo hiệu năng / dịch vụ
+                            {isVi ? 'Cảnh báo hiệu năng' : 'Degraded Performance'}
                           </span>
                         )}
                         {dev.status === DeviceStatus.Online && !hasDrift && (
                           <span className="text-emerald-600 dark:text-emerald-400">
-                            Hoạt động ổn định
+                            {isVi ? 'Hoạt động ổn định' : 'Healthy / Online'}
                           </span>
                         )}
                         {hasDrift && (
                           <span className="text-amber-600 dark:text-amber-400">
-                            {dev.status !== DeviceStatus.Online ? ' · ' : ''}Lệch cấu hình (Drift)
+                            {dev.status !== DeviceStatus.Online ? ' · ' : ''}
+                            {isVi ? 'Lệch cấu hình (Drift)' : 'Config Drift'}
                           </span>
                         )}
                         {stoppedSvc > 0 && (
                           <span className="text-rose-600 dark:text-rose-400">
-                            {' '}· {stoppedSvc} daemon dừng
+                            {' '}· {stoppedSvc} {isVi ? 'dịch vụ dừng' : 'stopped daemon'}
                           </span>
                         )}
                       </div>
@@ -813,13 +822,17 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
 
             <div className="space-y-1.5 pt-1">
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-                Triệu chứng ghi nhận thêm (Tùy chọn)
+                {isVi ? 'Triệu chứng bổ sung (Tùy chọn)' : 'Additional Symptoms (Optional)'}
               </label>
               <input
                 type="text"
                 value={customSymptom}
                 onChange={(e) => setCustomSymptom(e.target.value)}
-                placeholder="VD: Rớt gói BGP, nghẽn VLAN 30, lỗi xác thực RADIUS..."
+                placeholder={
+                  isVi
+                    ? 'VD: Rớt gói BGP, nghẽn VLAN 30...'
+                    : 'e.g. BGP flap, VLAN 30 packet drops...'
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
               />
             </div>
@@ -829,7 +842,9 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
               <label className="flex items-center justify-between gap-2 cursor-pointer">
                 <span className="text-xs font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Kết hợp Quét Socket TCP/DNS Thực tế</span>
+                  <span>
+                    {isVi ? 'Kết hợp Quét Socket TCP/DNS Thực tế' : 'Include Live TCP/DNS Socket Probe'}
+                  </span>
                 </span>
                 <input
                   type="checkbox"
@@ -846,7 +861,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                       type="text"
                       value={liveProbeTarget}
                       onChange={(e) => setLiveProbeTarget(e.target.value)}
-                      placeholder="IP hoặc Domain (1.1.1.1, 8.8.8.8, cloudflare.com)"
+                      placeholder="1.1.1.1 / cloudflare.com"
                       className="flex-1 px-2.5 py-1.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                     />
                     <button
@@ -855,7 +870,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                       onClick={() => runLiveSocketProbe(liveProbeTarget)}
                       className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 transition-colors"
                     >
-                      {isProbing ? 'Đang quét...' : 'Probe'}
+                      {isProbing ? (isVi ? 'Đang quét...' : 'Probing...') : 'Probe'}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
@@ -886,13 +901,19 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
               {isAnalyzing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Đang phân tích bằng {activeProvider.name}...</span>
+                  <span>
+                    {isVi
+                      ? `Đang phân tích bằng ${activeProvider.name}...`
+                      : `Analyzing with ${activeProvider.name}...`}
+                  </span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
                   <span>
-                    Chạy RCA với {activeProvider.name} ({activeProvider.selectedModel})
+                    {isVi
+                      ? `Chạy RCA với ${activeProvider.name} (${activeProvider.selectedModel})`
+                      : `Run RCA with ${activeProvider.name} (${activeProvider.selectedModel})`}
                   </span>
                 </>
               )}
@@ -905,7 +926,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                   <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Kết quả Quét Mạng Thực tế (Live Probe)</span>
+                  <span>{isVi ? 'Kết quả Live Probe' : 'Live Socket Probe Result'}</span>
                 </div>
                 <span className="font-mono text-[11px] text-slate-500 tabular-nums">
                   {liveProbeData.avgLatencyMs}ms RTT
@@ -914,13 +935,13 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
 
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Host / IP phân giải:</span>
+                  <span className="text-slate-500">{isVi ? 'Host / IP:' : 'Resolved Host / IP:'}</span>
                   <span className="text-slate-900 dark:text-slate-100 font-semibold">
                     {liveProbeData.target} ({liveProbeData.ip})
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Trạng thái kết nối:</span>
+                  <span className="text-slate-500">{isVi ? 'Trạng thái:' : 'Reachability:'}</span>
                   <span
                     className={
                       liveProbeData.reachable
@@ -931,18 +952,12 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     {liveProbeData.reachable ? 'REACHABLE (ONLINE)' : 'UNREACHABLE'}
                   </span>
                 </div>
-                {liveProbeData.banner && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">HTTP Server Banner:</span>
-                    <span className="text-slate-800 dark:text-slate-200">
-                      {liveProbeData.banner}
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-1">
-                <div className="text-slate-500 font-medium">Trạng thái Cổng TCP Thực tế:</div>
+                <div className="text-slate-500 font-medium">
+                  {isVi ? 'Cổng TCP:' : 'TCP Port Status:'}
+                </div>
                 <div className="grid grid-cols-3 gap-1.5 font-mono text-[11px] tabular-nums">
                   {liveProbeData.portChecks.map((p) => (
                     <div
@@ -966,7 +981,9 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                   className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-blue-600/30 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Nạp Host Thực tế này vào CMDB & Topology</span>
+                  <span>
+                    {isVi ? 'Nạp Host này vào CMDB & Topology' : 'Import Host to CMDB & Topology'}
+                  </span>
                 </button>
               )}
             </div>
@@ -986,12 +1003,12 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 onClick={() => setRemediationFeedback(null)}
                 className="text-emerald-700 dark:text-emerald-400 hover:underline shrink-0"
               >
-                Đóng
+                {isVi ? 'Đóng' : 'Dismiss'}
               </button>
             </div>
           )}
 
-          {/* Interactive NOC AI Copilot Panel (Promoted with Multi-AI Model Selector) */}
+          {/* Interactive NOC AI Copilot Panel */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -1000,10 +1017,12 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Trợ lý Kỹ sư NOC AI Copilot ({activeProvider.name})
+                    {isVi
+                      ? `Trợ lý Kỹ sư NOC AI Copilot (${activeProvider.name})`
+                      : `NOC AI Engineer Copilot (${activeProvider.name})`}
                   </h3>
                   <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                    Tài khoản: {activeProvider.accountEmail} · {activeProvider.workspaceName}
+                    {activeProvider.accountEmail} · {activeProvider.workspaceName}
                   </p>
                 </div>
               </div>
@@ -1017,7 +1036,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 >
                   {aiProviders.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} {p.loggedIn ? '✓' : '(Chưa đăng nhập)'}
+                      {p.name} {p.loggedIn ? '✓' : isVi ? '(Đăng nhập)' : '(Sign in)'}
                     </option>
                   ))}
                 </select>
@@ -1039,15 +1058,21 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                   onChange={(e) => setReasoningMode(e.target.value as AiReasoningMode)}
                   className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
-                  <option value="deep-rca">Chế độ: Phân tích Sâu (Deep RCA)</option>
-                  <option value="strict-cli">Chế độ: Tối ưu Lệnh CLI Đa hãng</option>
-                  <option value="fast-noc">Chế độ: Phản hồi Nhanh (Fast NOC)</option>
+                  <option value="deep-rca">
+                    {isVi ? 'Chế độ: Phân tích Sâu (Deep RCA)' : 'Mode: Deep RCA'}
+                  </option>
+                  <option value="strict-cli">
+                    {isVi ? 'Chế độ: Lệnh CLI Đa hãng' : 'Mode: Multi-Vendor CLI'}
+                  </option>
+                  <option value="fast-noc">
+                    {isVi ? 'Chế độ: Phản hồi Nhanh (Fast NOC)' : 'Mode: Fast NOC Triage'}
+                  </option>
                 </select>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {COPILOT_PRESETS.map((preset, idx) => (
+              {(isVi ? COPILOT_PRESETS_VI : COPILOT_PRESETS_EN).map((preset, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -1072,7 +1097,9 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                   <div className="flex items-center justify-between text-[11px] opacity-75 font-mono">
                     <span>
                       {msg.role === 'user'
-                        ? `Kỹ sư NOC (${activeProvider.accountEmail})`
+                        ? isVi
+                          ? `Kỹ sư NOC (${activeProvider.accountEmail})`
+                          : `NOC Engineer (${activeProvider.accountEmail})`
                         : `${msg.providerLabel || 'OmniNet AI'} · ${msg.modelName || 'gemini-3.8-flash'}`}
                     </span>
                     <span>{msg.timestamp}</span>
@@ -1098,7 +1125,11 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 type="text"
                 value={copilotInput}
                 onChange={(e) => setCopilotInput(e.target.value)}
-                placeholder={`Hỏi ${activeProvider.name} (${activeProvider.selectedModel}) về sự cố mạng, tạo ACL/VLAN/BGP...`}
+                placeholder={
+                  isVi
+                    ? `Hỏi ${activeProvider.name} (${activeProvider.selectedModel}) về sự cố mạng, tạo ACL/VLAN/BGP...`
+                    : `Ask ${activeProvider.name} (${activeProvider.selectedModel}) about network faults, ACLs, VLANs, BGP...`
+                }
                 className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
               />
               <button
@@ -1107,7 +1138,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{isCopilotBusy ? 'Đang xử lý...' : 'Gửi'}</span>
+                <span>{isCopilotBusy ? (isVi ? 'Đang xử lý...' : 'Thinking...') : isVi ? 'Gửi' : 'Send'}</span>
               </button>
             </form>
           </div>
@@ -1138,7 +1169,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     </span>
                     <span className="text-slate-400">·</span>
                     <span className="text-slate-500">
-                      Độ tin cậy: {rcaReport.confidencePct}%
+                      {isVi ? 'Độ tin cậy:' : 'Confidence:'} {rcaReport.confidencePct}%
                     </span>
                   </div>
 
@@ -1146,7 +1177,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     {rcaReport.incidentTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    AI Engine: {rcaReport.engine} · Vendor: {rcaReport.vendor} · Lúc {rcaReport.generatedAt}
+                    AI Engine: {rcaReport.engine} · Vendor: {rcaReport.vendor} · {rcaReport.generatedAt}
                   </p>
                 </div>
 
@@ -1156,7 +1187,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     onClick={() => selectedDevice && onSelectDeviceDrawer(selectedDevice)}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                   >
-                    Chi tiết Phần cứng
+                    {isVi ? 'Chi tiết Phần cứng' : 'Hardware Inspector'}
                   </button>
                   <button
                     type="button"
@@ -1164,7 +1195,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                   >
                     <Sliders className="w-3.5 h-3.5" />
-                    <span>Mở Config Hub</span>
+                    <span>{isVi ? 'Mở Config Hub' : 'Config Hub'}</span>
                   </button>
                 </div>
               </div>
@@ -1173,7 +1204,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <Cpu className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>Tóm tắt Chẩn đoán (Executive Summary)</span>
+                    <span>{isVi ? 'Tóm tắt Chẩn đoán' : 'Executive Summary'}</span>
                   </div>
                   <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                     {rcaReport.executiveSummary}
@@ -1183,7 +1214,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                    <span>Nguyên nhân Gốc Kỹ thuật (Technical Root Cause)</span>
+                    <span>{isVi ? 'Nguyên nhân Gốc Kỹ thuật' : 'Technical Root Cause'}</span>
                   </div>
                   <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                     {rcaReport.technicalRootCause}
@@ -1194,7 +1225,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
               <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                 <div className="space-y-2.5">
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-                    Chuỗi Bằng chứng Đa tầng (Cross-Layer Evidence)
+                    {isVi ? 'Chuỗi Bằng chứng Đa tầng' : 'Cross-Layer Evidence'}
                   </h4>
                   <ul className="space-y-2">
                     {rcaReport.evidenceChain.map((item, index) => (
@@ -1213,7 +1244,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
 
                 <div className="space-y-2.5">
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-                    Phạm vi Ảnh hưởng Topology (Blast Radius)
+                    {isVi ? 'Phạm vi Ảnh hưởng (Blast Radius)' : 'Topology Blast Radius'}
                   </h4>
                   <ul className="space-y-2">
                     {rcaReport.blastRadius.map((item, index) => (
@@ -1233,7 +1264,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 <div className="space-y-2">
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Quy trình Khắc phục Khuyến nghị (Step-by-Step)</span>
+                    <span>{isVi ? 'Các Bước Khắc phục' : 'Recommended Remediation Steps'}</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {rcaReport.recommendedSteps.map((step, idx) => (
@@ -1242,7 +1273,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                         className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
                       >
                         <div className="font-mono text-[11px] text-blue-600 dark:text-blue-400 font-semibold mb-1">
-                          Bước {idx + 1}
+                          {isVi ? `Bước ${idx + 1}` : `Step ${idx + 1}`}
                         </div>
                         <div className="text-slate-700 dark:text-slate-300">{step}</div>
                       </div>
@@ -1255,7 +1286,9 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                       <Terminal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>
-                        Kịch bản CLI Khắc phục Tự động ({rcaReport.vendor})
+                        {isVi
+                          ? `Kịch bản CLI Khắc phục Tự động (${rcaReport.vendor})`
+                          : `Automated Remediation CLI (${rcaReport.vendor})`}
                       </span>
                     </div>
 
@@ -1266,7 +1299,11 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>Thực thi Khắc phục Toàn diện & Đồng bộ Baseline</span>
+                        <span>
+                          {isVi
+                            ? 'Thực thi Khắc phục & Đồng bộ Baseline'
+                            : 'Execute Remediation & Sync Baseline'}
+                        </span>
                       </button>
 
                       <button
@@ -1275,7 +1312,9 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 transition-colors"
                       >
                         <Play className="w-3.5 h-3.5" />
-                        <span>Chỉ đẩy CLI & Lưu Golden Baseline</span>
+                        <span>
+                          {isVi ? 'Chỉ đẩy CLI & Lưu Baseline' : 'Push CLI & Save Baseline'}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1301,11 +1340,10 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Đăng nhập & Chuyển đổi Nền tảng AI (SSO Session)
+                    {isVi
+                      ? 'Đăng nhập & Chuyển đổi Nền tảng AI (SSO)'
+                      : 'Multi-AI Provider SSO Session'}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Kết nối tài khoản Gemini, ChatGPT, Claude hoặc DeepSeek cho Trợ lý Kỹ sư
-                  </p>
                 </div>
               </div>
               <button
@@ -1362,13 +1400,19 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                         : 'text-amber-600 dark:text-amber-400'
                     }`}
                   >
-                    {loginModalTarget.loggedIn ? '● Đã kết nối' : '○ Chưa đăng nhập'}
+                    {loginModalTarget.loggedIn
+                      ? isVi
+                        ? '● Đã kết nối'
+                        : '● Connected'
+                      : isVi
+                      ? '○ Chưa đăng nhập'
+                      : '○ Disconnected'}
                   </span>
                 </div>
 
                 <div className="space-y-1">
                   <label className="block text-slate-600 dark:text-slate-400 font-medium">
-                    Email Tài khoản Kỹ sư / SSO Account
+                    {isVi ? 'Email Tài khoản SSO' : 'Engineer SSO Email'}
                   </label>
                   <input
                     type="email"
@@ -1383,7 +1427,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="block text-slate-600 dark:text-slate-400 font-medium">
-                      Workspace / Tổ chức
+                      {isVi ? 'Workspace / Tổ chức' : 'Workspace / Org'}
                     </label>
                     <input
                       type="text"
@@ -1396,7 +1440,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
 
                   <div className="space-y-1">
                     <label className="block text-slate-600 dark:text-slate-400 font-medium">
-                      Mô hình AI Mặc định
+                      {isVi ? 'Mô hình AI Mặc định' : 'Default AI Model'}
                     </label>
                     <select
                       value={loginModelSelect}
@@ -1421,7 +1465,11 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 font-medium transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Đăng xuất {loginModalTarget.name}</span>
+                    <span>
+                      {isVi
+                        ? `Đăng xuất ${loginModalTarget.name}`
+                        : `Sign out ${loginModalTarget.name}`}
+                    </span>
                   </button>
                 ) : (
                   <div />
@@ -1433,7 +1481,7 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     onClick={() => setAuthModalOpen(false)}
                     className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    Đóng
+                    {isVi ? 'Đóng' : 'Close'}
                   </button>
                   <button
                     type="submit"
@@ -1443,10 +1491,16 @@ export const AiDiagnosticsRcaView: React.FC<AiDiagnosticsRcaViewProps> = ({
                     <LogIn className="w-3.5 h-3.5" />
                     <span>
                       {isAuthenticatingSso
-                        ? 'Đang xác thực SSO...'
+                        ? isVi
+                          ? 'Đang xác thực...'
+                          : 'Authenticating...'
                         : loginModalTarget.loggedIn
-                        ? `Lưu & Dùng ${loginModalTarget.name}`
-                        : `Đăng nhập SSO ${loginModalTarget.name}`}
+                        ? isVi
+                          ? `Lưu & Dùng ${loginModalTarget.name}`
+                          : `Save & Use ${loginModalTarget.name}`
+                        : isVi
+                        ? `Đăng nhập ${loginModalTarget.name}`
+                        : `Sign in ${loginModalTarget.name}`}
                     </span>
                   </button>
                 </div>
