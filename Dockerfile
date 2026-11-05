@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy application source & build production frontend bundle
 COPY . .
