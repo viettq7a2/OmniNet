@@ -1,4 +1,4 @@
-name: OmniNet Enterprise — Build & GitHub Release (Windows + Docker)
+name: OmniNet Enterprise — Build & GitHub Release (Windows .EXE + Docker)
 
 on:
   push:
@@ -12,8 +12,50 @@ permissions:
   packages: write
 
 jobs:
+  build-windows-exe:
+    name: Build Standalone Windows .EXE Setup Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Production Frontend & Backend Assets
+        run: npm run build
+
+      - name: Install Inno Setup Compiler
+        run: choco install innosetup -y
+
+      - name: Compile 1-File Setup .EXE with Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" deploy/windows/OmniNet-Enterprise-Setup.iss
+
+      - name: Upload Single-File .EXE to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniNet-Enterprise-Setup-Windows-EXE
+          path: dist-installer/OmniNet-Enterprise-Setup-v*.exe
+
+      - name: Publish Single .EXE to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: v3.5.0-release
+          name: OmniNet Enterprise v3.5.0 Standalone Windows Installer
+          files: dist-installer/OmniNet-Enterprise-Setup-v*.exe
+          generate_release_notes: true
+
   build-and-package:
-    name: Build Production Bundle & Windows/Docker Artifacts
+    name: Build Portable ZIP & Docker Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -24,10 +66,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: TypeScript & Lint Verification
         run: npm run lint
@@ -38,7 +79,7 @@ jobs:
       - name: Package Windows Portable Release (.zip)
         run: |
           mkdir -p release-win/OmniNet-Windows
-          cp -r dist server.ts package.json package-lock.json tsconfig.json .env.example README.md deploy release-win/OmniNet-Windows/
+          cp -r dist server.ts package.json tsconfig.json .env.example README.md deploy release-win/OmniNet-Windows/
           cp deploy/windows/Start-OmniNet-Windows.bat release-win/OmniNet-Windows/
           cp deploy/windows/Update-OmniNet-Windows.bat release-win/OmniNet-Windows/
           cd release-win && zip -r ../OmniNet-Windows-Portable.zip OmniNet-Windows
@@ -47,19 +88,10 @@ jobs:
         run: |
           zip -r OmniNet-Docker-Stack.zip Dockerfile docker-compose.yml .env.example README.md
 
-      - name: Upload Build Artifacts to GitHub Actions
+      - name: Upload Portable Bundles
         uses: actions/upload-artifact@v4
         with:
-          name: OmniNet-Release-Bundles
+          name: OmniNet-Portable-Bundles
           path: |
             OmniNet-Windows-Portable.zip
             OmniNet-Docker-Stack.zip
-
-      - name: Publish GitHub Release (on version tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            OmniNet-Windows-Portable.zip
-            OmniNet-Docker-Stack.zip
-          generate_release_notes: true
