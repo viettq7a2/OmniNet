@@ -2,7 +2,7 @@
 title OmniNet Enterprise NCM - Windows Desktop & Server Edition
 color 0B
 echo ============================================================================
-echo   OmniNet Enterprise NCM - Autonomous NetOps & Multi-Vendor CLI Platform
+echo   OmniNet Enterprise NCM - Autonomous NetOps ^& Multi-Vendor CLI Platform
 echo   Phien ban: Windows Desktop / Windows Server Edition (Port 3000)
 echo ============================================================================
 echo.
@@ -17,7 +17,7 @@ if %errorlevel% neq 0 (
 
 if not exist "node_modules" (
     echo [1/3] Dang cai dat cac thu vien phu thuoc cho OmniNet...
-    call npm install
+    call npm install --legacy-peer-deps
 )
 
 if not exist "dist" (
@@ -25,7 +25,7 @@ if not exist "dist" (
     call npm run build
 )
 
-echo [3/3] Dang khoi dong OmniNet Backend Server & Zero-API-Key AI Relay (Port 3000)...
+echo [3/3] Dang khoi dong OmniNet Backend Server ^& Zero-API-Key AI Relay (Port 3000)...
 start "OmniNet Core Engine" cmd /c "npx tsx server.ts"
 
 timeout /t 3 /nobreak >nul

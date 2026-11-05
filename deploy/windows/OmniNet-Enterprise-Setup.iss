@@ -37,7 +37,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "firewall"; Description: "Configure Windows Firewall (Allow Port 3000 & SNMP/SSH)"; GroupDescription: "Network Security:"
 
 [Files]
-Source: "..\..\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "node_modules\*,dist-installer\*,dist\*,tests\*,*.git*"
+Source: "..\..\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "node_modules\*,dist-installer\*,tests\*,*.git*"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\deploy\windows\{#MyAppExeName}"; IconFilename: "{app}\public\favicon.ico"
@@ -46,9 +46,6 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\deploy\windows\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\public\favicon.ico"
 
 [Run]
-; Optional firewall rule configuration during setup
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniNet Enterprise NCM (Port 3000)"" dir=in action=allow protocol=TCP localport=3000"; Flags: runhidden; Tasks: firewall
-; Install dependencies and build on first install
-Filename: "cmd.exe"; Parameters: "/c npm install && npm run build"; WorkingDir: "{app}"; Flags: runhidden; StatusMsg: "Preparing OmniNet Enterprise production bundle..."
-; Launch application at the end of installation
+Filename: "cmd.exe"; Parameters: "/c npm install --legacy-peer-deps"; WorkingDir: "{app}"; Flags: runhidden; StatusMsg: "Configuring OmniNet Enterprise dependencies..."
 Filename: "{app}\deploy\windows\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

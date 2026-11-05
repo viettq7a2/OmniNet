@@ -149,35 +149,35 @@ const WINDOWS_BAT_CONTENT = `@echo off
 title OmniNet Enterprise NCM - Windows Desktop & Server Edition
 color 0B
 echo ============================================================================
-echo   OmniNet Enterprise NCM - Autonomous NetOps & Multi-Vendor CLI Platform
-echo   Edition: Windows Desktop / Windows Server (Port 3000)
+echo   OmniNet Enterprise NCM - Autonomous NetOps ^& Multi-Vendor CLI Platform
+echo   Phien ban: Windows Desktop / Windows Server Edition (Port 3000)
 echo ============================================================================
 echo.
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js Runtime not found on Windows.
-    echo Please install Node.js LTS (v20/v22) from https://nodejs.org/
+    echo [ERROR] Chua cai dat Node.js Runtime tren Windows.
+    echo Vui long tai Node.js LTS (v20/v22) tai https://nodejs.org/
     pause
     exit /b 1
 )
 
 if not exist "node_modules" (
-    echo [1/3] Installing OmniNet dependencies...
-    call npm install
+    echo [1/3] Dang cai dat cac thu vien phu thuoc cho OmniNet...
+    call npm install --legacy-peer-deps
 )
 
 if not exist "dist" (
-    echo [2/3] Building OmniNet Production bundle...
+    echo [2/3] Dang dong goi giao dien Production OmniNet...
     call npm run build
 )
 
-echo [3/3] Starting OmniNet Backend Server & Zero-API-Key AI Relay (Port 3000)...
+echo [3/3] Dang khoi dong OmniNet Backend Server ^& Zero-API-Key AI Relay (Port 3000)...
 start "OmniNet Core Engine" cmd /c "npx tsx server.ts"
 
 timeout /t 3 /nobreak >nul
 
-echo Launching OmniNet Native Desktop App Window...
+echo Dang mo cua so ung dung OmniNet Native Desktop App...
 where msedge >nul 2>nul
 if %errorlevel% equ 0 (
     start msedge --app=http://localhost:3000 --window-size=1480,920
@@ -186,7 +186,7 @@ if %errorlevel% equ 0 (
 )
 
 echo.
-echo [OK] OmniNet is running at http://localhost:3000
+echo [OK] OmniNet dang chay tai http://localhost:3000
 pause`;
 
 const WINDOWS_PS1_CONTENT = `# ==============================================================================
@@ -205,7 +205,7 @@ New-NetFirewallRule -DisplayName "OmniNet Enterprise Web Console (TCP 3000)" \`
 
 # 2. Install & Build Production Bundle
 Write-Host "[2/4] Building OmniNet Production Assets..." -ForegroundColor Yellow
-npm install
+npm install --legacy-peer-deps
 npm run build
 
 # 3. Create Windows Desktop Shortcut with Native App Mode
@@ -223,18 +223,22 @@ Write-Host "To package as a standalone .exe installer with Electron:" -Foregroun
 Write-Host "  npx nativefier --name 'OmniNet' --width 1480 --height 920 http://localhost:3000" -ForegroundColor White`;
 
 const WINDOWS_UPDATE_BAT_CONTENT = `@echo off
-title OmniNet Enterprise NCM - Auto-Update & Zero-Downtime Rebuild
+title OmniNet Enterprise NCM - GitHub Auto-Updater (Windows)
 color 0A
 echo ============================================================================
 echo   OmniNet Enterprise NCM - One-Click GitHub Updater (Windows)
 echo ============================================================================
-echo [1/4] Pulling latest release from GitHub Repository...
+echo.
+echo [1/4] Pulling latest release from GitHub repository...
 git pull origin main
-echo [2/4] Updating dependencies...
-call npm install
+echo.
+echo [2/4] Updating Node.js dependencies...
+call npm install --legacy-peer-deps
+echo.
 echo [3/4] Rebuilding production bundle...
 call npm run build
-echo [4/4] Update complete! Restarting OmniNet...
+echo.
+echo [4/4] Update complete! Launching OmniNet on Port 3000...
 call deploy\\windows\\Start-OmniNet-Windows.bat`;
 
 const WINDOWS_SETUP_ISS_CONTENT = `; ==============================================================================
@@ -276,7 +280,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "firewall"; Description: "Configure Windows Firewall (Allow Port 3000 & SNMP/SSH)"; GroupDescription: "Network Security:"
 
 [Files]
-Source: "..\\..\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "node_modules\\*,dist-installer\\*,dist\\*,tests\\*,*.git*"
+Source: "..\\..\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "node_modules\\*,dist-installer\\*,tests\\*,*.git*"
 
 [Icons]
 Name: "{group}\\{#MyAppName}"; Filename: "{app}\\deploy\\windows\\{#MyAppExeName}"; IconFilename: "{app}\\public\\favicon.ico"
@@ -286,10 +290,11 @@ Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\deploy\\windows\\{#MyAppE
 
 [Run]
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniNet Enterprise NCM (Port 3000)"" dir=in action=allow protocol=TCP localport=3000"; Flags: runhidden; Tasks: firewall
-Filename: "cmd.exe"; Parameters: "/c npm install && npm run build"; WorkingDir: "{app}"; Flags: runhidden; StatusMsg: "Preparing OmniNet Enterprise production bundle..."
+Filename: "cmd.exe"; Parameters: "/c npm install --legacy-peer-deps"; WorkingDir: "{app}"; Flags: runhidden; StatusMsg: "Configuring OmniNet Enterprise dependencies..."
 Filename: "{app}\\deploy\\windows\\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent`;
 
 const WINDOWS_BUILD_EXE_BAT_CONTENT = `@echo off
+setlocal enabledelayedexpansion
 title OmniNet Enterprise NCM - Single EXE Installer Builder
 color 0B
 echo ============================================================================
@@ -308,61 +313,72 @@ if %errorlevel% neq 0 (
 )
 
 echo [1/4] Installing project dependencies...
-call npm install
+call npm install --legacy-peer-deps
+if %errorlevel% neq 0 (
+    echo [WARNING] Retrying npm install with --force...
+    call npm install --force
+)
 
-echo [2/4] Compiling frontend & backend assets...
+echo [2/4] Compiling frontend and backend production bundle...
 call npm run build
+if %errorlevel% neq 0 (
+    echo [ERROR] Build failed. Please check TypeScript and Vite output above.
+    pause
+    exit /b 1
+)
 
 if not exist "dist-installer" mkdir "dist-installer"
 
 echo [3/4] Searching for Inno Setup Compiler (ISCC.exe)...
 
 set "ISCC_PATH="
+if exist "%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe"
 if exist "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
 if exist "C:\\Program Files\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=C:\\Program Files\\Inno Setup 6\\ISCC.exe"
-if exist "%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe"
 
-if defined ISCC_PATH (
-    echo [FOUND] Inno Setup compiler detected at: "%ISCC_PATH%"
-    echo Compiling single-file installer: dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe ...
-    "%ISCC_PATH%" "deploy\\windows\\OmniNet-Enterprise-Setup.iss"
-    if %errorlevel% equ 0 (
-        echo.
-        echo ============================================================================
-        echo [SUCCESS] File cai dat duy nhat da duoc tao thanh cong tai:
-        echo   %CD%\\dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe
-        echo ============================================================================
-        explorer "%CD%\\dist-installer"
-        pause
-        exit /b 0
-    )
+if defined ISCC_PATH goto run_iscc
+
+where iscc >nul 2>nul
+if %errorlevel% equ 0 (
+    set "ISCC_PATH=iscc"
+    goto run_iscc
 )
 
-echo [INFO] Inno Setup is not installed yet on this system.
-echo Dang cai dat Inno Setup tu dong qua Windows Package Manager (winget)...
+echo [INFO] Inno Setup is not detected in standard paths. Installing via winget...
 winget install --id JRSoftware.InnoSetup -e --silent --accept-source-agreements --accept-package-agreements >nul 2>nul
 
+if exist "%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe" (
+    set "ISCC_PATH=%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe"
+    goto run_iscc
+)
 if exist "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" (
-    "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" "deploy\\windows\\OmniNet-Enterprise-Setup.iss"
-    echo [SUCCESS] Tao bo cai dat Setup.exe thanh cong!
+    set "ISCC_PATH=C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
+    goto run_iscc
+)
+
+echo [ERROR] Could not find ISCC.exe. Please install Inno Setup from https://jrsoftware.org/isdl.php
+pause
+exit /b 1
+
+:run_iscc
+echo [FOUND] Inno Setup compiler detected at: "!ISCC_PATH!"
+echo [4/4] Compiling single-file installer: dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe ...
+"!ISCC_PATH!" "deploy\\windows\\OmniNet-Enterprise-Setup.iss"
+
+if exist "dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe" (
+    echo.
+    echo ============================================================================
+    echo [SUCCESS] File cai dat duy nhat da duoc tao thanh cong tai:
+    echo   %CD%\\dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe
+    echo ============================================================================
     explorer "%CD%\\dist-installer"
     pause
     exit /b 0
-)
-
-echo.
-echo ============================================================================
-echo   CAC PHUONG AN DONG GOI 1 FILE .EXE DUY NHAT:
-echo ============================================================================
-echo   Phuong an 1 (Khuyen nghi):
-echo     1. Cai dat Inno Setup mien phi tu: https://jrsoftware.org/isdl.php
-echo     2. Nhap dup file "deploy\\windows\\OmniNet-Enterprise-Setup.iss" va bam Run (F9).
-echo     3. Thu muc "dist-installer" se xuat hien file "OmniNet-Enterprise-Setup-v3.5.0.exe".
-echo.
-echo   Phuong an 2 (Dong goi Native App truc tiep bang 1 lenh qua CMD):
-echo     npx nativefier --name "OmniNet-Enterprise" --width 1500 --height 950 http://localhost:3000
-echo ============================================================================
-pause`;
+) else (
+    echo [ERROR] Inno Setup compilation failed.
+    pause
+    exit /b 1
+)`;
 
 export const PlatformDeploymentModal: React.FC<PlatformDeploymentModalProps> = ({
   isOpen,
