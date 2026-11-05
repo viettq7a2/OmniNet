@@ -1,0 +1,6 @@
+{
+  "name": "OmniNet",
+  "description": "Enterprise network discovery, IT asset inventory, centralized multi-vendor configuration management, AI root-cause analysis, and real-time Recharts traffic and node status monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
