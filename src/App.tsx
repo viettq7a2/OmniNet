@@ -2,19 +2,24 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Cable,
   CheckCircle2,
+  Cpu,
   Database,
   LayoutDashboard,
+  Lock,
   Menu,
   Moon,
   Network,
   Radar,
   RotateCcw,
+  ShieldCheck,
   Sliders,
   Sparkles,
   Sun,
   X,
 } from 'lucide-react';
 import {
+  AiAccountProfile,
+  AiProviderId,
   ConfigTemplateType,
   DeviceInterface,
   DeviceRole,
@@ -22,8 +27,10 @@ import {
   DiscoverySchedule,
   NetworkAlert,
   NetworkDevice,
+  OmniNetAuthSession,
   ServerService,
   TrafficTelemetryPoint,
+  VendorDatasheetProfile,
   VendorName,
 } from './types/network';
 import {
@@ -41,6 +48,8 @@ import { PortsAndServicesView } from './components/PortsAndServicesView';
 import { AiDiagnosticsRcaView } from './components/AiDiagnosticsRcaView';
 import { DeviceDetailDrawer } from './components/DeviceDetailDrawer';
 import { FloatingAiAssistant } from './components/FloatingAiAssistant';
+import { VendorDatasheetSyncModal } from './components/VendorDatasheetSyncModal';
+import { AuthOnboardingGate } from './components/AuthOnboardingGate';
 
 type NavTab =
   | 'dashboard'
@@ -51,8 +60,62 @@ type NavTab =
   | 'discovery'
   | 'inventory';
 
-const STORAGE_KEY_DEVICES = 'netvista_enterprise_devices_v2';
-const STORAGE_KEY_THEME = 'netvista_enterprise_theme_v1';
+const STORAGE_KEY_DEVICES = 'omninet_enterprise_devices_v3';
+const STORAGE_KEY_THEME = 'omninet_enterprise_theme_v1';
+const STORAGE_KEY_AUTH = 'omninet_auth_session_v1';
+const STORAGE_KEY_DATASHEETS = 'omninet_vendor_datasheets_v1';
+const STORAGE_KEY_AI_ACCOUNTS = 'omninet_ai_accounts_v2';
+
+const DEFAULT_AI_ACCOUNTS: Record<AiProviderId, AiAccountProfile> = {
+  gemini: {
+    providerId: 'gemini',
+    providerLabel: 'Google Gemini',
+    vendorName: 'Google Cloud Vertex AI',
+    email: 'netops.architect@omninet.corp',
+    tier: 'Zero-Key Cloud Relay (SSO)',
+    connected: true,
+    selectedModel: 'gemini-3.8-flash',
+    reasoningMode: 'deep-rca',
+    authMethod: 'OAuth-SSO',
+    lastSync: '2m ago',
+  },
+  chatgpt: {
+    providerId: 'chatgpt',
+    providerLabel: 'OpenAI ChatGPT',
+    vendorName: 'OpenAI Platform',
+    email: 'ccie.ops@omninet.corp',
+    tier: 'ChatGPT Plus / Enterprise SSO',
+    connected: true,
+    selectedModel: 'gpt-4o',
+    reasoningMode: 'fast-triage',
+    authMethod: 'OAuth-SSO',
+    lastSync: '5m ago',
+  },
+  claude: {
+    providerId: 'claude',
+    providerLabel: 'Anthropic Claude',
+    vendorName: 'Anthropic Console',
+    email: 'secops.lead@omninet.corp',
+    tier: 'Claude 3.7 Pro Team SSO',
+    connected: true,
+    selectedModel: 'claude-3.7-sonnet',
+    reasoningMode: 'compliance-audit',
+    authMethod: 'OAuth-SSO',
+    lastSync: '12m ago',
+  },
+  deepseek: {
+    providerId: 'deepseek',
+    providerLabel: 'DeepSeek NetOps',
+    vendorName: 'DeepSeek Reasoning Cloud',
+    email: 'routing.lab@omninet.corp',
+    tier: 'DeepSeek-R1 Relay',
+    connected: true,
+    selectedModel: 'deepseek-r1-netops',
+    reasoningMode: 'deep-rca',
+    authMethod: 'Workspace-Token',
+    lastSync: '18m ago',
+  },
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
@@ -75,6 +138,117 @@ export default function App() {
       // Ignore storage quota errors
     }
   }, [isDark]);
+
+  // 2-Step Auth + Google Authenticator MFA + Zero-Key AI Login state
+  const [authSession, setAuthSession] = useState<OmniNetAuthSession>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+    return {
+      isAuthenticated: true,
+      username: 'admin.netops@omninet.corp',
+      role: 'Principal Network & Security Architect',
+      mfaVerified: true,
+      mfaMethod: 'Google Authenticator (TOTP)',
+      lastLoginAt: 'Active Session',
+      zeroApiKeyMode: true,
+    };
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  const [aiAccounts, setAiAccounts] = useState<Record<AiProviderId, AiAccountProfile>>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_AI_ACCOUNTS);
+      if (raw) return { ...DEFAULT_AI_ACCOUNTS, ...JSON.parse(raw) };
+    } catch {
+      // ignore
+    }
+    return DEFAULT_AI_ACCOUNTS;
+  });
+  const [activeAiProvider, setActiveAiProvider] = useState<AiProviderId>('gemini');
+
+  const handleUpdateAiAccount = useCallback(
+    (provider: AiProviderId, patch: Partial<AiAccountProfile>) => {
+      setAiAccounts((prev) => {
+        const next = {
+          ...prev,
+          [provider]: { ...prev[provider], ...patch },
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY_AI_ACCOUNTS, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // Synced Vendor Datasheets & OS-Version CLI Database
+  const [syncedDatasheets, setSyncedDatasheets] = useState<VendorDatasheetProfile[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_DATASHEETS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: 'ds-unifi-init',
+        vendor: 'Ubiquiti UniFi',
+        model: 'USW-Pro-Max-48-PoE',
+        osFamily: 'UniFi OS / Switch Fastpath & Debian Shell',
+        osVersion: 'UniFi OS 4.0.6 · Network 8.5.6',
+        role: DeviceRole.Switch,
+        switchingCapacityGbps: '176 Gbps (88 Gbps Non-Blocking)',
+        forwardingRateMpps: '130.95 Mpps',
+        poeBudgetWatts: '600W (802.3bt PoE++)',
+        mgmtProtocols: ['SSHv2', 'Vendor-API', 'SNMPv3'],
+        cliDialectSummary:
+          'UniFi Switches support dual-layer CLI: Linux busybox/ubnt-systool shell (mca-cli-op, info, set-inform) plus internal Fastpath ICOS switch CLI (cli -> enable -> configure) for L2/L3 VLAN & port debugging.',
+        versionCliDifferences: [
+          'UniFi Firmware 3.x–5.x (Legacy): Uses `telnet 127.0.0.1 2222` after SSH to enter Fastpath CLI (`enable` -> `configure` -> `vlan database`).',
+          'UniFi Firmware 6.x–7.x & UniFi OS 3.x–4.x (Modern): Uses `cli` or `mca-cli-op info` directly from SSH shell; L3 Inter-VLAN routing managed via UniFi Network 8.x REST API.',
+          'HP ProCurve PVOS vs Aruba AOS-CX: ProCurve uses `vlan 20 -> untagged 1-24 tagged 49-50`, whereas AOS-CX uses `interface 1/1/1 -> vlan access 20`.',
+          'HPE Comware v7 vs Comware v5: Comware v7 uses `system-view`, `interface Vlan-interface <id>`, `undo shutdown`, and `save force`.',
+        ],
+        sampleVlanCli: `# Ubiquiti UniFi OS 4.x / Fastpath Switch CLI — USW-Pro-Max-48-PoE\nmca-cli-op info\ncli\nenable\nconfigure\nvlan database\n vlan 20\n vlan name 20 "CORP_WIFI_VLAN"\n exit\ninterface 0/1-0/24\n vlan pvid 20\n vlan participation include 20\n exit\nwrite memory`,
+        sampleBaselineCli: `# Ubiquiti UniFi OS 4.x Hardening & Inform Binding\nmca-cli-op set-inform http://10.10.0.50:8080/inform\nsed -i 's/syslog.status=disabled/syslog.status=enabled/' /tmp/system.cfg\nsyswrapper.sh apply-config`,
+        sampleAclCli: `# Ubiquiti UniFi L3 Inter-VLAN Isolation ACL\ncli\nenable\nconfigure\nip access-list extended BLOCK_IOT_TO_CORP\n deny ip 10.20.30.0 0.0.0.255 10.10.0.0 0.0.255.255\n permit ip any any\nexit`,
+        datasheetSources: [
+          {
+            title: 'Ubiquiti Tech Specs — UniFi Pro & Enterprise Switch Datasheets',
+            url: 'https://techspecs.ui.com/unifi/switching',
+          },
+          {
+            title: 'Aruba Airheads & HPE Support — AOS-CX vs ProCurve PVOS vs Comware v7 CLI Guide',
+            url: 'https://community.arubanetworks.com/',
+          },
+        ],
+        syncedAt: 'Live Ready',
+      },
+    ];
+  });
+  const [isDatasheetModalOpen, setIsDatasheetModalOpen] = useState<boolean>(false);
+
+  const handleSaveDatasheetProfile = useCallback((profile: VendorDatasheetProfile) => {
+    setSyncedDatasheets((prev) => {
+      const next = [profile, ...prev.filter((p) => p.model !== profile.model)].slice(0, 15);
+      try {
+        localStorage.setItem(STORAGE_KEY_DATASHEETS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const [devices, setDevices] = useState<NetworkDevice[]>(() => {
     try {
@@ -345,6 +519,12 @@ export default function App() {
               ? `port${i + 1}`
               : params.vendor === 'Palo Alto'
               ? `ethernet1/${i + 1}`
+              : params.vendor === 'Ubiquiti UniFi'
+              ? `0/${i + 1}`
+              : params.vendor === 'HPE Comware'
+              ? `Twenty-FiveGigE1/0/${i + 1}`
+              : params.vendor === 'HP ProCurve'
+              ? `${i + 1}`
               : `Gi0/${i + 1}`,
           status: i < 2 ? ('up' as const) : ('down' as const),
           adminStatus: 'up' as const,
@@ -839,7 +1019,7 @@ export default function App() {
         appendImmediateTelemetrySnapshot(next);
         return next;
       });
-      showToast(`Registered asset ${device.hostname} (${device.assetTag}).`);
+      showToast(`Registered asset ${device.hostname} (${device.vendor} · ${device.osVersion}).`);
     },
     [appendImmediateTelemetrySnapshot, showToast]
   );
@@ -1026,6 +1206,26 @@ export default function App() {
               );
             })}
           </nav>
+
+          {/* Quick Vendor & Security Actions in Sidebar */}
+          <div className="px-3 pt-2 space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setIsDatasheetModalOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-colors"
+            >
+              <Cpu className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
+              <span className="truncate">Cập nhật Hãng & CLI theo OS</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+              <span className="truncate">Đăng nhập 2FA & AI (Zero-Key)</span>
+            </button>
+          </div>
         </div>
 
         {/* Sidebar Footer Summary */}
@@ -1056,7 +1256,7 @@ export default function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar Contract */}
-        <header className="h-14 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-8 sticky top-0 z-30">
+        <header className="h-14 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 sticky top-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -1074,7 +1274,29 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsDatasheetModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-cyan-500/40 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100 transition-colors whitespace-nowrap shrink-0"
+              title="Thêm hãng/mã thiết bị còn thiếu và đồng bộ Datasheet & CLI theo phiên bản OS"
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cập nhật Hãng & Datasheet CLI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0"
+              title="Đăng nhập Tài khoản OmniNet (Google Authenticator 2FA) & Tài khoản AI (Zero-API-Key)"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">
+                {authSession.username.split('@')[0]} · 2FA & AI SSO
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('ai-rca')}
@@ -1096,23 +1318,14 @@ export default function App() {
               {isDark ? (
                 <>
                   <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Light Theme</span>
+                  <span className="hidden xl:inline">Light</span>
                 </>
               ) : (
                 <>
                   <Moon className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Dark Theme</span>
+                  <span className="hidden xl:inline">Dark</span>
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('topology')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
-            >
-              <Network className="w-3.5 h-3.5" />
-              <span>Topology Studio</span>
             </button>
           </div>
         </header>
@@ -1208,6 +1421,7 @@ export default function App() {
               onPushConfigToDevices={handlePushConfigToDevices}
               onRollbackDeviceConfig={handleRollbackDeviceConfig}
               onPromoteGoldenBaseline={handlePromoteGoldenBaseline}
+              onOpenDatasheetSync={() => setIsDatasheetModalOpen(true)}
             />
           )}
 
@@ -1231,10 +1445,45 @@ export default function App() {
               onAddDevice={handleAddManualDevice}
               onUpdateDevice={handleUpdateDevice}
               onDeleteDevice={handleDeleteDevice}
+              onOpenDatasheetSync={() => setIsDatasheetModalOpen(true)}
             />
           )}
         </main>
       </div>
+
+      {/* Real-Time Vendor Datasheet & OS-Version CLI Sync Modal */}
+      <VendorDatasheetSyncModal
+        isOpen={isDatasheetModalOpen}
+        onClose={() => setIsDatasheetModalOpen(false)}
+        syncedProfiles={syncedDatasheets}
+        onSaveProfile={handleSaveDatasheetProfile}
+        onAddDeviceFromProfile={(newDev) => {
+          handleAddManualDevice(newDev);
+        }}
+      />
+
+      {/* 2-Step OmniNet Account + Google Authenticator MFA + Zero-API-Key AI Login Gate */}
+      <AuthOnboardingGate
+        isOpen={isAuthModalOpen}
+        onCompleteAuth={(session) => {
+          setAuthSession(session);
+          setIsAuthModalOpen(false);
+          try {
+            localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(session));
+          } catch {
+            // ignore
+          }
+          showToast(
+            `Đã xác thực MFA (${session.mfaMethod}) & kết nối Trợ lý AI chế độ Zero-API-Key!`
+          );
+        }}
+        aiAccounts={aiAccounts}
+        activeAiProvider={activeAiProvider}
+        onSelectAiProvider={setActiveAiProvider}
+        onUpdateAiAccount={handleUpdateAiAccount}
+        isAlreadyAuthenticated={authSession.isAuthenticated}
+        onCloseIfAlreadyAuthenticated={() => setIsAuthModalOpen(false)}
+      />
 
       {/* Device Inspector Slide-over */}
       <DeviceDetailDrawer

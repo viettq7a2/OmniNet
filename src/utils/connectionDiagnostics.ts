@@ -207,6 +207,46 @@ function buildConnectionFixCli(
     ].join('\n');
   }
 
+  if (device.vendor === 'Ubiquiti UniFi') {
+    return [
+      `# Khắc phục kết nối Ubiquiti UniFi (${device.osVersion}) — ${device.hostname}`,
+      `mca-cli-op info`,
+      `mca-cli-op set-inform http://10.10.0.50:8080/inform`,
+      `cli`,
+      `enable`,
+      `configure`,
+      `interface ${portName}`,
+      ` no shutdown`,
+      ` exit`,
+      `write memory`,
+    ].join('\n');
+  }
+
+  if (device.vendor === 'HPE Comware') {
+    return [
+      `# Khắc phục kết nối HPE Comware (${device.osVersion}) — ${device.hostname}`,
+      `system-view`,
+      `interface ${portName}`,
+      ` undo shutdown`,
+      ` quit`,
+      `ssh server enable`,
+      `netconf ssh server enable`,
+      `save force`,
+    ].join('\n');
+  }
+
+  if (device.vendor === 'HP ProCurve') {
+    return [
+      `; Khắc phục kết nối HP ProCurve (${device.osVersion}) — ${device.hostname}`,
+      `configure`,
+      `interface ${portName}`,
+      `   enable`,
+      `   exit`,
+      `ip ssh version 2`,
+      `write memory`,
+    ].join('\n');
+  }
+
   return [
     `! Khắc phục lỗi mất kết nối & khôi phục Uplink (${device.vendor}) — ${device.hostname}`,
     `configure terminal`,

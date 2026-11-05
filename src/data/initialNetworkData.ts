@@ -1,3 +1,4 @@
+// OmniNet Enterprise Initial Network Topology & Seed Data
 import {
   DeviceInterface,
   DeviceRole,
@@ -911,6 +912,270 @@ IPV4_ADDRESS=10.10.100.43/24`,
       },
     ],
   },
+  {
+    id: 'dev-sw-unifi-01',
+    hostname: 'usw-pro-48-poe.corp.local',
+    ip: '10.20.10.24',
+    mac: 'F4:92:BF:88:10:24',
+    vendor: 'Ubiquiti UniFi',
+    model: 'UniFi Switch Pro Max 48 PoE',
+    osVersion: 'UniFi OS 4.0.6 / Net 8.5',
+    role: DeviceRole.Switch,
+    status: DeviceStatus.Online,
+    site: 'SGN-Campus HQ',
+    rack: 'IDF Floor 1 · RU 22',
+    serialNumber: 'UBNT2408991A',
+    assetTag: 'AST-NET-00224',
+    department: 'Campus WiFi & Access',
+    purchaseDate: '2024-07-10',
+    warrantyExpiry: '2027-07-10',
+    uptimeSeconds: 7420000,
+    cpuLoad: 21,
+    memoryUsage: 49,
+    tempCelsius: 43,
+    inboundMbps: 412.8,
+    outboundMbps: 389.4,
+    latencyMs: 2.3,
+    packetLossPct: 0.0,
+    openPorts: [22, 443, 8080, 8443],
+    discoveryMethod: 'SNMPv3 + LLDP',
+    mgmtProtocol: 'Vendor-API',
+    lastSeen: 'Just now',
+    topologyTier: 2,
+    canvasPos: { x: 100, y: 345 },
+    interfaces: [
+      ...generateAccessPorts('0/', 1, 12, [1, 2, 3, 4, 6, 7, 9, 10, 11], 'VLAN 20', 2500, 'RJ45-1G', true),
+      { name: '0/49', description: 'Uplink-Aruba-6300M', status: 'up', adminStatus: 'up', portType: 'SFP+-10G', mode: 'trunk', speedMbps: 10000, vlan: 'Trunk 10,20,30', rxMbps: 412.8, txMbps: 389.4, connectedToId: 'dev-sw-02', connectedToHostname: 'sw-dist-hq01.corp.local', connectedPort: '1/1/49', protocol: 'LLDP' },
+      { name: '0/50', description: 'Downlink-U6-Enterprise-AP', status: 'up', adminStatus: 'up', portType: 'SFP+-10G', mode: 'trunk', speedMbps: 10000, vlan: 'Trunk 20,30', rxMbps: 185.0, txMbps: 162.1, protocol: 'LLDP' },
+    ],
+    vlans: [
+      { id: 10, name: 'UNIFI_MGMT', sviIp: '10.20.10.24/24', status: 'active' },
+      { id: 20, name: 'CORP_WIFI_6E', sviIp: '10.20.20.254/24', status: 'active' },
+      { id: 30, name: 'IOT_CAMERA_NET', sviIp: '10.20.30.254/24', status: 'active' },
+    ],
+    runningConfig: `# Ubiquiti UniFi OS 4.0.6 / Fastpath CLI — usw-pro-48-poe.corp.local
+# Controller Inform: http://10.10.0.50:8080/inform (Connected)
+cli
+enable
+configure
+hostname "usw-pro-48-poe"
+sntp server "10.10.0.10"
+logging host "10.10.0.50"
+vlan database
+ vlan 10,20,30
+ exit
+interface 0/49
+ description "Uplink-Aruba-6300M"
+ vlan participation include 10,20,30
+ vlan tagging 10,20,30
+ exit
+write memory`,
+    goldenBaselineConfig: `# Ubiquiti UniFi OS 4.0.6 / Fastpath CLI — usw-pro-48-poe.corp.local
+# Controller Inform: http://10.10.0.50:8080/inform (Connected)
+cli
+enable
+configure
+hostname "usw-pro-48-poe"
+sntp server "10.10.0.10"
+logging host "10.10.0.50"
+vlan database
+ vlan 10,20,30
+ exit
+interface 0/49
+ description "Uplink-Aruba-6300M"
+ vlan participation include 10,20,30
+ vlan tagging 10,20,30
+ exit
+write memory`,
+    configHistory: [
+      {
+        id: 'rev-unifi01-1',
+        versionLabel: 'v3 (Running)',
+        timestamp: '2026-10-31 11:00',
+        author: 'campus-admin',
+        summary: 'UniFi Network 8.5 L3 Etherlighting & PoE++ profile',
+        content: `# Ubiquiti UniFi OS 4.0.6 / Fastpath CLI — usw-pro-48-poe.corp.local\ncli\nenable\nconfigure\nhostname "usw-pro-48-poe"\nsntp server "10.10.0.10"\nlogging host "10.10.0.50"\nvlan database\n vlan 10,20,30\n exit\nwrite memory`,
+      },
+    ],
+  },
+  {
+    id: 'dev-sw-hpe-01',
+    hostname: 'sw-hpe-5945-dc.corp.local',
+    ip: '10.10.0.14',
+    mac: '38:EA:A7:91:00:14',
+    vendor: 'HPE Comware',
+    model: 'HPE FlexFabric 5945 48SFP28',
+    osVersion: 'Comware v7.1.070',
+    role: DeviceRole.Switch,
+    status: DeviceStatus.Online,
+    site: 'HN-DC1 Core',
+    rack: 'Rack A04 · RU 40',
+    serialNumber: 'CN39K2108B',
+    assetTag: 'AST-NET-00114',
+    department: 'Data Center Fabric',
+    purchaseDate: '2024-03-22',
+    warrantyExpiry: '2029-03-22',
+    uptimeSeconds: 15120000,
+    cpuLoad: 24,
+    memoryUsage: 44,
+    tempCelsius: 39,
+    inboundMbps: 1120.4,
+    outboundMbps: 1085.0,
+    latencyMs: 0.9,
+    packetLossPct: 0.0,
+    openPorts: [22, 161, 830],
+    discoveryMethod: 'NETCONF',
+    mgmtProtocol: 'NETCONF',
+    lastSeen: 'Just now',
+    topologyTier: 2,
+    canvasPos: { x: 370, y: 345 },
+    interfaces: [
+      { name: 'Twenty-FiveGigE1/0/1', description: 'Uplink-Nexus-Core', status: 'up', adminStatus: 'up', portType: 'SFP28-25G', mode: 'trunk', speedMbps: 25000, vlan: 'Trunk 10,100,105', rxMbps: 620.4, txMbps: 590.1, connectedToId: 'dev-sw-01', connectedToHostname: 'sw-core-nx01.corp.local', connectedPort: 'Eth1/3', protocol: 'LLDP' },
+      { name: 'Twenty-FiveGigE1/0/2', description: 'HPE-DL380-Storage', status: 'up', adminStatus: 'up', portType: 'SFP28-25G', mode: 'access', speedMbps: 25000, vlan: 'VLAN 105', rxMbps: 500.0, txMbps: 494.9, connectedToId: 'dev-srv-02', connectedToHostname: 'srv-db-prod01.corp.local', connectedPort: 'eno2', protocol: 'LLDP' },
+      ...generateAccessPorts('Twenty-FiveGigE1/0/', 3, 6, [3, 4, 5, 6], 'VLAN 100', 25000, 'SFP28-25G', false),
+    ],
+    vlans: [
+      { id: 10, name: 'DC_MGMT', sviIp: '10.10.10.14/24', status: 'active' },
+      { id: 100, name: 'DC_COMPUTE', sviIp: '10.10.100.14/24', status: 'active' },
+      { id: 105, name: 'DC_SAN_NVME', sviIp: '10.10.105.14/24', status: 'active' },
+    ],
+    runningConfig: `# HPE Comware Software, Version 7.1.070 — sw-hpe-5945-dc.corp.local
+system-view
+ sysname sw-hpe-5945-dc
+ undo telnet server enable
+ ssh server enable
+ netconf ssh server enable
+ ntp-service enable
+ ntp-service unicast-server 10.10.0.10 priority
+ info-center loghost 10.10.0.50
+ vlan 10
+  name DC_MGMT
+ vlan 100
+  name DC_COMPUTE
+ interface Twenty-FiveGigE1/0/1
+  description Uplink-Nexus-Core
+  port link-type trunk
+  port trunk permit vlan 10 100 105
+  undo shutdown
+return`,
+    goldenBaselineConfig: `# HPE Comware Software, Version 7.1.070 — sw-hpe-5945-dc.corp.local
+system-view
+ sysname sw-hpe-5945-dc
+ undo telnet server enable
+ ssh server enable
+ netconf ssh server enable
+ ntp-service enable
+ ntp-service unicast-server 10.10.0.10 priority
+ info-center loghost 10.10.0.50
+ vlan 10
+  name DC_MGMT
+ vlan 100
+  name DC_COMPUTE
+ interface Twenty-FiveGigE1/0/1
+  description Uplink-Nexus-Core
+  port link-type trunk
+  port trunk permit vlan 10 100 105
+  undo shutdown
+return`,
+    configHistory: [
+      {
+        id: 'rev-hpe01-1',
+        versionLabel: 'v2 (Running)',
+        timestamp: '2026-10-27 16:40',
+        author: 'dc-fabric-admin',
+        summary: 'HPE Comware v7 IRF & RoCEv2 lossless storage fabric',
+        content: `# HPE Comware Software, Version 7.1.070 — sw-hpe-5945-dc.corp.local\nsystem-view\n sysname sw-hpe-5945-dc\n undo telnet server enable\n ssh server enable\n ntp-service enable\n ntp-service unicast-server 10.10.0.10 priority\n info-center loghost 10.10.0.50\nreturn`,
+      },
+    ],
+  },
+  {
+    id: 'dev-sw-procurve-01',
+    hostname: 'sw-hp-2920-fl2.corp.local',
+    ip: '10.20.10.28',
+    mac: 'A0:D3:C1:44:10:28',
+    vendor: 'HP ProCurve',
+    model: 'HP ProCurve 2920-48G-PoE+ (J9729A)',
+    osVersion: 'ProCurve OS WB.16.11.0008',
+    role: DeviceRole.Switch,
+    status: DeviceStatus.Online,
+    site: 'DN-Branch Edge',
+    rack: 'Rack C01 · RU 18',
+    serialNumber: 'SG54P0912K',
+    assetTag: 'AST-NET-00312',
+    department: 'Branch Operations',
+    purchaseDate: '2021-11-15',
+    warrantyExpiry: '2028-11-15',
+    uptimeSeconds: 22150000,
+    cpuLoad: 18,
+    memoryUsage: 39,
+    tempCelsius: 35,
+    inboundMbps: 164.2,
+    outboundMbps: 148.6,
+    latencyMs: 4.6,
+    packetLossPct: 0.0,
+    openPorts: [22, 80, 443],
+    discoveryMethod: 'SNMPv3 + LLDP',
+    mgmtProtocol: 'SSHv2',
+    lastSeen: 'Just now',
+    topologyTier: 2,
+    canvasPos: { x: 960, y: 345 },
+    interfaces: [
+      ...generateAccessPorts('', 1, 10, [1, 2, 3, 5, 7, 8], 'VLAN 88', 1000, 'RJ45-1G', true),
+      { name: '49', description: 'Uplink-MikroTik-CCR', status: 'up', adminStatus: 'up', portType: 'SFP+-10G', mode: 'trunk', speedMbps: 10000, vlan: 'Trunk 88,89', rxMbps: 164.2, txMbps: 148.6, connectedToId: 'dev-rtr-03', connectedToHostname: 'rtr-edge-dn01.corp.local', connectedPort: 'ether1', protocol: 'LLDP' },
+    ],
+    vlans: [
+      { id: 88, name: 'BRANCH_STAFF', sviIp: '192.168.88.2/24', status: 'active' },
+      { id: 89, name: 'BRANCH_VOICE_POE', sviIp: '192.168.89.2/24', status: 'active' },
+    ],
+    runningConfig: `; HP ProCurve J9729A Configuration Editor; Created on release #WB.16.11.0008
+hostname "sw-hp-2920-fl2"
+no telnet-server
+ip ssh version 2
+timesync sntp
+sntp unicast
+sntp server priority 1 10.10.0.10
+logging 10.10.0.50
+vlan 88
+   name "BRANCH_STAFF"
+   untagged 1-24
+   tagged 49-50
+   ip address 192.168.88.2 255.255.255.0
+   exit
+vlan 89
+   name "BRANCH_VOICE_POE"
+   tagged 1-24,49-50
+   voice
+   exit`,
+    goldenBaselineConfig: `; HP ProCurve J9729A Configuration Editor; Created on release #WB.16.11.0008
+hostname "sw-hp-2920-fl2"
+no telnet-server
+ip ssh version 2
+timesync sntp
+sntp unicast
+sntp server priority 1 10.10.0.10
+logging 10.10.0.50
+vlan 88
+   name "BRANCH_STAFF"
+   untagged 1-24
+   tagged 49-50
+   ip address 192.168.88.2 255.255.255.0
+   exit
+vlan 89
+   name "BRANCH_VOICE_POE"
+   tagged 1-24,49-50
+   voice
+   exit`,
+    configHistory: [
+      {
+        id: 'rev-hp01-1',
+        versionLabel: 'v4 (Running)',
+        timestamp: '2026-10-18 10:15',
+        author: 'branch-ops',
+        summary: 'ProCurve WB.16.11 tagged/untagged Voice VLAN & PoE+ setup',
+        content: `; HP ProCurve J9729A Configuration Editor; Created on release #WB.16.11.0008\nhostname "sw-hp-2920-fl2"\nno telnet-server\nip ssh version 2\ntimesync sntp\nsntp unicast\nsntp server priority 1 10.10.0.10\nlogging 10.10.0.50\nvlan 88\n   name "BRANCH_STAFF"\n   untagged 1-24\n   tagged 49-50\n   exit`,
+      },
+    ],
+  },
 ];
 
 export const SUBNET_DISCOVERY_CATALOG: Record<string, Omit<DiscoveryCandidate, 'selected' | 'alreadyManaged'>[]> = {
@@ -931,17 +1196,17 @@ export const SUBNET_DISCOVERY_CATALOG: Record<string, Omit<DiscoveryCandidate, '
     },
     {
       id: 'cand-dmz-02',
-      hostname: 'sw-dmz-leaf02.corp.local',
+      hostname: 'sw-hpe-dmz01.corp.local',
       ip: '172.16.40.11',
-      mac: '00:2A:6A:CC:40:11',
-      vendor: 'Cisco NX-OS',
-      model: 'Nexus 9336C-FX2',
-      osVersion: 'NX-OS 10.3(3)F',
+      mac: '38:EA:A7:CC:40:11',
+      vendor: 'HPE Comware',
+      model: 'HPE FlexFabric 5710 48XGT',
+      osVersion: 'Comware v7.1.070',
       role: DeviceRole.Switch,
       site: 'HN-DC1 Core',
-      openPorts: [22, 161],
+      openPorts: [22, 161, 830],
       latencyMs: 1.1,
-      discoveryMethod: 'SSH + CDP',
+      discoveryMethod: 'NETCONF',
     },
     {
       id: 'cand-dmz-03',
@@ -966,7 +1231,7 @@ export const SUBNET_DISCOVERY_CATALOG: Record<string, Omit<DiscoveryCandidate, '
       mac: '88:3A:30:E4:20:12',
       vendor: 'Aruba',
       model: 'Aruba CX 6200F 48G',
-      osVersion: 'AOS-CX 10.12.1010',
+      osVersion: 'AOS-CX 10.13.1010',
       role: DeviceRole.Switch,
       site: 'SGN-Campus HQ',
       openPorts: [22, 443],
@@ -975,17 +1240,31 @@ export const SUBNET_DISCOVERY_CATALOG: Record<string, Omit<DiscoveryCandidate, '
     },
     {
       id: 'cand-hq-02',
-      hostname: 'fw-branch-vpn02.corp.local',
-      ip: '10.20.20.2',
-      mac: '00:1B:17:F1:20:02',
-      vendor: 'Palo Alto',
-      model: 'PA-460',
-      osVersion: 'PAN-OS 11.1.2',
-      role: DeviceRole.Firewall,
+      hostname: 'usw-ent-24-poe.corp.local',
+      ip: '10.20.20.18',
+      mac: 'F4:92:BF:E4:20:18',
+      vendor: 'Ubiquiti UniFi',
+      model: 'UniFi Switch Enterprise 24 PoE',
+      osVersion: 'UniFi OS 4.0.6 / Net 8.5',
+      role: DeviceRole.Switch,
       site: 'SGN-Campus HQ',
-      openPorts: [22, 443],
-      latencyMs: 3.8,
-      discoveryMethod: 'NETCONF',
+      openPorts: [22, 443, 8080],
+      latencyMs: 2.7,
+      discoveryMethod: 'SNMPv3 + LLDP',
+    },
+    {
+      id: 'cand-hq-03',
+      hostname: 'sw-hp-2530-fl1.corp.local',
+      ip: '10.20.20.29',
+      mac: 'A0:D3:C1:E4:20:29',
+      vendor: 'HP ProCurve',
+      model: 'HP 2530-48G-PoE+ (J9772A)',
+      osVersion: 'ProCurve OS YA.16.11.0009',
+      role: DeviceRole.Switch,
+      site: 'SGN-Campus HQ',
+      openPorts: [22, 80, 443],
+      latencyMs: 3.9,
+      discoveryMethod: 'SNMPv3 + LLDP',
     },
   ],
 };

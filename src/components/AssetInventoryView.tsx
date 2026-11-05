@@ -1,3 +1,4 @@
+// OmniNet IT Asset Inventory & CMDB Lifecycle View
 import React, { useMemo, useState } from 'react';
 import {
   CheckCircle2,
@@ -23,16 +24,20 @@ interface AssetInventoryViewProps {
   onAddDevice: (device: NetworkDevice) => void;
   onUpdateDevice: (device: NetworkDevice) => void;
   onDeleteDevice: (deviceId: string) => void;
+  onOpenDatasheetSync?: () => void;
 }
 
 const VENDORS: VendorName[] = [
+  'Ubiquiti UniFi',
+  'Aruba',
+  'HPE Comware',
+  'HP ProCurve',
   'Cisco IOS-XE',
   'Cisco NX-OS',
   'Fortinet',
   'Palo Alto',
   'Juniper',
   'MikroTik',
-  'Aruba',
   'Linux / Server',
 ];
 
@@ -49,6 +54,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
   onAddDevice,
   onUpdateDevice,
   onDeleteDevice,
+  onOpenDatasheetSync,
 }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | DeviceRole>('ALL');
@@ -62,7 +68,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
   const [formHostname, setFormHostname] = useState('');
   const [formIp, setFormIp] = useState('');
   const [formMac, setFormMac] = useState('00:50:56:AA:11:22');
-  const [formVendor, setFormVendor] = useState<VendorName>('Cisco IOS-XE');
+  const [formVendor, setFormVendor] = useState<VendorName>('Ubiquiti UniFi');
   const [formModel, setFormModel] = useState('');
   const [formOsVersion, setFormOsVersion] = useState('');
   const [formRole, setFormRole] = useState<DeviceRole>(DeviceRole.Switch);
@@ -75,16 +81,16 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
 
   const openCreateModal = () => {
     setEditingDevice(null);
-    setFormHostname('sw-branch-04.corp.local');
+    setFormHostname('usw-pro-fl4.corp.local');
     setFormIp('10.30.10.12');
-    setFormMac('00:50:56:BC:30:12');
-    setFormVendor('Cisco IOS-XE');
-    setFormModel('Catalyst 9300-24T');
-    setFormOsVersion('IOS-XE 17.9.4a');
+    setFormMac('F4:92:BF:BC:30:12');
+    setFormVendor('Ubiquiti UniFi');
+    setFormModel('UniFi Switch Pro Max 48 PoE');
+    setFormOsVersion('UniFi OS 4.0.6 / Net 8.5');
     setFormRole(DeviceRole.Switch);
     setFormSite('DN-Branch Edge');
     setFormRack('Rack C02 · RU 14');
-    setFormSerial(`FDO${Math.floor(100000 + Math.random() * 900000)}X`);
+    setFormSerial(`UBNT${Math.floor(100000 + Math.random() * 900000)}X`);
     setFormAssetTag(`AST-NET-00${Math.floor(500 + Math.random() * 499)}`);
     setFormDepartment('Campus LAN');
     setFormWarranty('2029-06-30');
@@ -263,7 +269,7 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `netvista-cmdb-assets-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `omninet-cmdb-assets-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -278,11 +284,21 @@ export const AssetInventoryView: React.FC<AssetInventoryViewProps> = ({
             Enterprise IT Asset Inventory (CMDB)
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Lifecycle tracking, serial numbers, rack locations, firmware versions, and warranty coverage for all network hardware
+            Quản lý thiết bị đa hãng (Ubiquiti UniFi, Aruba, HPE Comware, HP ProCurve, Cisco, Fortinet...) & cập nhật tập lệnh CLI theo phiên bản OS thời gian thực
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {onOpenDatasheetSync && (
+            <button
+              type="button"
+              onClick={onOpenDatasheetSync}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Nhập Hãng/Mã thiếu & Cập nhật Database CLI</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={exportInventoryCsv}

@@ -1,3 +1,4 @@
+// OmniNet Multi-Vendor Configuration Hub & Visual Workbench
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Cable,
@@ -56,6 +57,7 @@ interface MultiVendorConfigViewProps {
   ) => void;
   onRollbackDeviceConfig: (deviceId: string, targetContent: string, label: string) => void;
   onPromoteGoldenBaseline: (deviceId: string) => void;
+  onOpenDatasheetSync?: () => void;
 }
 
 export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
@@ -66,6 +68,7 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
   onPushConfigToDevices,
   onRollbackDeviceConfig,
   onPromoteGoldenBaseline,
+  onOpenDatasheetSync,
 }) => {
   const [activeTab, setActiveTab] = useState<'visual' | 'batch' | 'diff'>(() =>
     preselectedTemplate ? 'batch' : 'visual'
@@ -591,44 +594,56 @@ export const MultiVendorConfigView: React.FC<MultiVendorConfigViewProps> = ({
           </p>
         </div>
 
-        {/* 3-Way Mode Switcher */}
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
-          <button
-            type="button"
-            onClick={() => setActiveTab('visual')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              activeTab === 'visual'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Visual Hook & GUI</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('batch')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              activeTab === 'batch'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Multi-Vendor Batch Push</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('diff')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              activeTab === 'diff'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <FileDiff className="w-3.5 h-3.5" />
-            <span>Backup, Diff & Rollback</span>
-          </button>
+        {/* 3-Way Mode Switcher + Datasheet Sync */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenDatasheetSync && (
+            <button
+              type="button"
+              onClick={onOpenDatasheetSync}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Cập nhật Hãng & Lệnh CLI theo Phiên bản OS</span>
+            </button>
+          )}
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setActiveTab('visual')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                activeTab === 'visual'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Visual Hook & GUI</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('batch')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                activeTab === 'batch'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>Multi-Vendor Batch Push</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('diff')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                activeTab === 'diff'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <FileDiff className="w-3.5 h-3.5" />
+              <span>Backup, Diff & Rollback</span>
+            </button>
+          </div>
         </div>
       </div>
 

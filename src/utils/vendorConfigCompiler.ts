@@ -1,3 +1,4 @@
+// OmniNet Multi-Vendor CLI Compiler & CIS Compliance Auditor
 import {
   ComplianceFinding,
   DeviceInterface,
@@ -136,7 +137,7 @@ export function compileVisualDeviceConfig(
       case 'Aruba':
         blocks.push(
           [
-            `! Aruba AOS-CX Port Config — ${ifc.name}`,
+            `! Aruba AOS-CX (${device.osVersion}) Port Config — ${ifc.name}`,
             `configure terminal`,
             `interface ${ifc.name}`,
             ifc.description ? `    description ${ifc.description}` : null,
@@ -145,6 +146,62 @@ export function compileVisualDeviceConfig(
               : `    vlan access ${vlanNum}`,
             isAdminUp ? `    no shutdown` : `    shutdown`,
             `end`,
+          ]
+            .filter(Boolean)
+            .join('\n')
+        );
+        break;
+      case 'Ubiquiti UniFi':
+        blocks.push(
+          [
+            `# Ubiquiti UniFi (${device.osVersion}) Fastpath Port Config — ${ifc.name}`,
+            `cli`,
+            `enable`,
+            `configure`,
+            `interface ${ifc.name}`,
+            ifc.description ? ` description "${ifc.description}"` : null,
+            ifc.mode === 'trunk'
+              ? ` vlan participation include ${vlanNum}\n vlan tagging ${vlanNum}`
+              : ` vlan pvid ${vlanNum}\n vlan participation include ${vlanNum}`,
+            isAdminUp ? ` no shutdown` : ` shutdown`,
+            ` exit`,
+            `write memory`,
+          ]
+            .filter(Boolean)
+            .join('\n')
+        );
+        break;
+      case 'HPE Comware':
+        blocks.push(
+          [
+            `# HPE Comware (${device.osVersion}) Port Config — ${ifc.name}`,
+            `system-view`,
+            `interface ${ifc.name}`,
+            ifc.description ? ` description ${ifc.description}` : null,
+            ifc.mode === 'trunk'
+              ? ` port link-type trunk\n port trunk permit vlan ${vlanNum.replace(/,/g, ' ')}`
+              : ` port link-type access\n port access vlan ${vlanNum}`,
+            isAdminUp ? ` undo shutdown` : ` shutdown`,
+            ` quit`,
+            `save force`,
+          ]
+            .filter(Boolean)
+            .join('\n')
+        );
+        break;
+      case 'HP ProCurve':
+        blocks.push(
+          [
+            `; HP ProCurve / ArubaOS-Switch (${device.osVersion}) Port Config — ${ifc.name}`,
+            `configure`,
+            `interface ${ifc.name}`,
+            ifc.description ? `   name "${ifc.description}"` : null,
+            isAdminUp ? `   enable` : `   disable`,
+            `   exit`,
+            `vlan ${vlanNum.split(',')[0] || '1'}`,
+            ifc.mode === 'trunk' ? `   tagged ${ifc.name}` : `   untagged ${ifc.name}`,
+            `   exit`,
+            `write memory`,
           ]
             .filter(Boolean)
             .join('\n')
@@ -174,6 +231,31 @@ export function compileVisualDeviceConfig(
           `configure terminal\nvlan ${v.id}\n  name ${v.name}\n${
             v.sviIp ? `interface Vlan${v.id}\n  ip address ${ip}/${prefix}\n  no shutdown\n` : ''
           }copy running-config startup-config`
+        );
+        break;
+      case 'Ubiquiti UniFi':
+        blocks.push(
+          `# Ubiquiti UniFi (${device.osVersion}) VLAN Provisioning\ncli\nenable\nconfigure\nvlan database\n vlan ${v.id}\n vlan name ${v.id} "${v.name}"\n ${
+            v.sviIp ? `vlan routing ${v.id}\n` : ''
+          }exit\n${
+            v.sviIp ? `interface vlan ${v.id}\n routing\n ip address ${ip} ${mask}\n exit\n` : ''
+          }write memory`
+        );
+        break;
+      case 'HPE Comware':
+        blocks.push(
+          `# HPE Comware (${device.osVersion}) VLAN & Vlan-interface\nsystem-view\nvlan ${v.id}\n name ${v.name}\n quit\n${
+            v.sviIp
+              ? `interface Vlan-interface ${v.id}\n ip address ${ip} ${mask}\n undo shutdown\n quit\n`
+              : ''
+          }save force`
+        );
+        break;
+      case 'HP ProCurve':
+        blocks.push(
+          `; HP ProCurve (${device.osVersion}) VLAN & SVI\nconfigure\nvlan ${v.id}\n   name "${v.name}"\n${
+            v.sviIp ? `   ip address ${ip} ${mask}\n` : ''
+          }   exit\nwrite memory`
         );
         break;
       case 'Fortinet':
@@ -238,6 +320,11 @@ export function compileVisualDeviceConfig(
           `/ip firewall filter add chain=forward src-address=${r.srcCidr} dst-address=${r.dstCidr} protocol=${r.protocol.toLowerCase()} dst-port=${r.port} action=${r.action === 'accept' ? 'accept' : 'drop'} log=${r.log ? 'yes' : 'no'} comment="${r.name}"`
         );
         break;
+      case 'HPE Comware':
+        blocks.push(
+          `system-view\nacl advanced 3001 name ${r.name}\n rule 10 ${r.action === 'accept' ? 'permit' : 'deny'} ${r.protocol.toLowerCase()} source ${r.srcCidr} destination ${r.dstCidr} destination-port eq ${r.port}${r.log ? ' logging' : ''}\n quit\nsave force`
+        );
+        break;
       default:
         blocks.push(
           `configure terminal\nip access-list extended ${r.name}\n ${r.action === 'accept' ? 'permit' : 'deny'} ${r.protocol.toLowerCase()} ${r.srcCidr} ${r.dstCidr} eq ${r.port}${r.log ? ' log' : ''}\nend`
@@ -255,6 +342,12 @@ export function compileVisualDeviceConfig(
         break;
       case 'Cisco NX-OS':
         blocks.push(`configure terminal\nip route ${rt.prefix} ${rt.nextHop} ${rt.metric}\ncopy running-config startup-config`);
+        break;
+      case 'HPE Comware':
+        blocks.push(`system-view\nip route-static ${ip} ${mask} ${rt.nextHop} preference ${rt.metric}\nsave force`);
+        break;
+      case 'HP ProCurve':
+        blocks.push(`configure\nip route ${ip} ${mask} ${rt.nextHop} metric ${rt.metric}\nwrite memory`);
         break;
       case 'Fortinet':
         blocks.push(
@@ -293,13 +386,13 @@ export function runSimulatedDeviceCliCommand(device: NetworkDevice, rawCmd: stri
 
   if (cmd === 'help' || cmd === '?') {
     return [
-      `Available diagnostic commands on ${device.hostname} (${device.vendor}):`,
-      `  show interfaces       — Display physical & logical port status`,
-      `  show vlan             — Display configured VLAN table`,
-      `  show route            — Display active routing table`,
-      `  show version          — Display hardware chassis, serial & OS version`,
-      `  show running-config   — Output active configuration`,
-      `  ping <ip>             — Send 4 ICMP echo probes from device`,
+      `Available diagnostic commands on ${device.hostname} (${device.vendor} · ${device.osVersion}):`,
+      `  show interfaces / display interface — Display physical & logical port status`,
+      `  show vlan / display vlan            — Display configured VLAN table`,
+      `  show route / display ip routing     — Display active routing table`,
+      `  show version / mca-cli-op info      — Display hardware chassis, serial & OS version`,
+      `  show running-config                 — Output active configuration`,
+      `  ping <ip>                           — Send 4 ICMP echo probes from device`,
     ].join('\n');
   }
 
@@ -338,7 +431,7 @@ export function runSimulatedDeviceCliCommand(device: NetworkDevice, rawCmd: stri
     ].join('\n');
   }
 
-  if (cmd.includes('ver') || cmd.includes('status')) {
+  if (cmd.includes('ver') || cmd.includes('status') || cmd.includes('info')) {
     return [
       `${device.vendor} — ${device.model}`,
       `Hostname: ${device.hostname} | Mgmt IP: ${device.ip}`,
@@ -356,7 +449,7 @@ export function runSimulatedDeviceCliCommand(device: NetworkDevice, rawCmd: stri
     ].join('\n');
   }
 
-  if (cmd.includes('run')) {
+  if (cmd.includes('run') || cmd.includes('current-configuration')) {
     return device.runningConfig;
   }
 
@@ -406,7 +499,7 @@ export function compileVendorCli(
           `logging host ${payload.syslogServer} transport udp port 514`,
           `logging trap informational`,
           `snmp-server location ${payload.snmpLocation}`,
-          `snmp-server group NETVISTA-V3 v3 priv`,
+          `snmp-server group OMNINET-V3 v3 priv`,
           `ip ssh version 2`,
           `line vty 0 15`,
           payload.disableTelnet ? ` transport input ssh` : ` transport input telnet ssh`,
@@ -493,6 +586,182 @@ export function compileVendorCli(
         `    remote-as ${payload.bgpRemoteAsn}`,
         `    address-family ipv4 unicast`,
         `copy running-config startup-config`,
+      ].join('\n');
+    }
+
+    case 'Ubiquiti UniFi': {
+      if (payload.templateType === 'vlan') {
+        return [
+          `# Ubiquiti UniFi OS 4.x / Switch Fastpath CLI — ${hostname}`,
+          `cli`,
+          `enable`,
+          `configure`,
+          `vlan database`,
+          ` vlan ${payload.vlanId}`,
+          ` vlan name ${payload.vlanId} "${payload.vlanName}"`,
+          ` vlan routing ${payload.vlanId}`,
+          ` exit`,
+          `interface vlan ${payload.vlanId}`,
+          ` routing`,
+          ` ip address ${sviIp} ${sviMask}`,
+          ` exit`,
+          `interface 0/49-0/50`,
+          ` vlan participation include ${payload.vlanId}`,
+          ` vlan tagging ${payload.vlanId}`,
+          ` exit`,
+          `write memory`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'baseline') {
+        return [
+          `# Ubiquiti UniFi OS 4.x System Baseline & Controller Inform — ${hostname}`,
+          `mca-cli-op set-inform http://${payload.syslogServer}:8080/inform`,
+          `cli`,
+          `enable`,
+          `configure`,
+          `sntp server "${payload.ntpPrimary}"`,
+          `sntp server "${payload.ntpSecondary}"`,
+          `logging host "${payload.syslogServer}"`,
+          `snmp-server sysname "${hostname}"`,
+          `snmp-server location "${payload.snmpLocation}"`,
+          payload.disableTelnet ? `no ip telnet server enable` : `ip telnet server enable`,
+          `ip ssh server enable`,
+          `exit`,
+          `write memory`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'acl') {
+        return [
+          `# Ubiquiti UniFi Switch L3 Extended ACL — ${hostname}`,
+          `cli`,
+          `enable`,
+          `configure`,
+          `ip access-list extended ${payload.aclName}`,
+          ` ${payload.aclAction} ${payload.aclProtocol} ${payload.aclSourceCidr} ${payload.aclDestCidr} eq ${payload.aclPort}`,
+          ` permit ip any any`,
+          ` exit`,
+          `write memory`,
+        ].join('\n');
+      }
+      return [
+        `# Ubiquiti UniFi OS BGP (FRR / Edge Routing Engine) — ${hostname}`,
+        `vtysh -c "configure terminal" -c "router bgp ${payload.bgpLocalAsn}" -c "neighbor ${payload.bgpNeighborIp} remote-as ${payload.bgpRemoteAsn}" -c "network ${payload.bgpAdvertisedPrefix}" -c "end" -c "write memory"`,
+      ].join('\n');
+    }
+
+    case 'HPE Comware': {
+      if (payload.templateType === 'vlan') {
+        return [
+          `# HPE Comware v7 VLAN & Vlan-interface Provisioning — ${hostname}`,
+          `system-view`,
+          `vlan ${payload.vlanId}`,
+          ` name ${payload.vlanName}`,
+          ` quit`,
+          `interface Vlan-interface ${payload.vlanId}`,
+          ` description Managed-${payload.vlanName}`,
+          ` ip address ${sviIp} ${sviMask}`,
+          ` undo shutdown`,
+          ` quit`,
+          `interface range Twenty-FiveGigE 1/0/1 to Twenty-FiveGigE 1/0/2`,
+          ` port link-type trunk`,
+          ` port trunk permit vlan ${payload.vlanId}`,
+          ` quit`,
+          `save force`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'baseline') {
+        return [
+          `# HPE Comware v7 System Hardening & Telemetry Baseline — ${hostname}`,
+          `system-view`,
+          payload.disableTelnet ? `undo telnet server enable` : `telnet server enable`,
+          `ssh server enable`,
+          `netconf ssh server enable`,
+          `ntp-service enable`,
+          `ntp-service unicast-server ${payload.ntpPrimary} priority`,
+          `ntp-service unicast-server ${payload.ntpSecondary}`,
+          `info-center enable`,
+          `info-center loghost ${payload.syslogServer}`,
+          `snmp-agent`,
+          `snmp-agent sys-info version v3`,
+          `snmp-agent sys-info location ${payload.snmpLocation}`,
+          `return`,
+          `save force`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'acl') {
+        return [
+          `# HPE Comware v7 Advanced IPv4 ACL — ${hostname}`,
+          `system-view`,
+          `acl advanced 3010 name ${payload.aclName}`,
+          ` rule 10 ${payload.aclAction} ${payload.aclProtocol} source ${payload.aclSourceCidr} destination ${payload.aclDestCidr} destination-port eq ${payload.aclPort} logging`,
+          ` rule 20 permit ip`,
+          ` quit`,
+          `save force`,
+        ].join('\n');
+      }
+      return [
+        `# HPE Comware v7 BGP Instance — ${hostname}`,
+        `system-view`,
+        `bgp ${payload.bgpLocalAsn}`,
+        ` peer ${payload.bgpNeighborIp} as-number ${payload.bgpRemoteAsn}`,
+        ` address-family ipv4 unicast`,
+        `  network ${cidrToMask(payload.bgpAdvertisedPrefix).ip} ${cidrToMask(payload.bgpAdvertisedPrefix).mask}`,
+        `  peer ${payload.bgpNeighborIp} enable`,
+        ` quit`,
+        `save force`,
+      ].join('\n');
+    }
+
+    case 'HP ProCurve': {
+      if (payload.templateType === 'vlan') {
+        return [
+          `; HP ProCurve / ArubaOS-Switch (WB.16.11) VLAN & Tagging — ${hostname}`,
+          `configure`,
+          `vlan ${payload.vlanId}`,
+          `   name "${payload.vlanName}"`,
+          `   untagged 1-24`,
+          `   tagged 49-50`,
+          `   ip address ${sviIp} ${sviMask}`,
+          `   exit`,
+          `write memory`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'baseline') {
+        return [
+          `; HP ProCurve / ArubaOS-Switch (WB.16.11) Hardening Baseline — ${hostname}`,
+          `configure`,
+          payload.disableTelnet ? `no telnet-server` : `telnet-server`,
+          `ip ssh version 2`,
+          `timesync sntp`,
+          `sntp unicast`,
+          `sntp server priority 1 ${payload.ntpPrimary}`,
+          `sntp server priority 2 ${payload.ntpSecondary}`,
+          `logging ${payload.syslogServer}`,
+          `snmp-server location "${payload.snmpLocation}"`,
+          `snmpv3 enable`,
+          `write memory`,
+        ].join('\n');
+      }
+      if (payload.templateType === 'acl') {
+        return [
+          `; HP ProCurve Extended Access-List — ${hostname}`,
+          `configure`,
+          `ip access-list extended "${payload.aclName}"`,
+          `   10 ${payload.aclAction} ${payload.aclProtocol} ${payload.aclSourceCidr} ${payload.aclDestCidr} eq ${payload.aclPort} log`,
+          `   20 permit ip 0.0.0.0 255.255.255.255 0.0.0.0 255.255.255.255`,
+          `   exit`,
+          `write memory`,
+        ].join('\n');
+      }
+      return [
+        `; HP ProCurve Layer 3 BGP / Static Routing — ${hostname}`,
+        `configure`,
+        `ip routing`,
+        `router bgp ${payload.bgpLocalAsn}`,
+        `   neighbor ${payload.bgpNeighborIp} remote-as ${payload.bgpRemoteAsn}`,
+        `   network ${ payload.bgpAdvertisedPrefix }`,
+        `   exit`,
+        `write memory`,
       ].join('\n');
     }
 
@@ -589,7 +858,7 @@ export function compileVendorCli(
           `configure`,
           `set deviceconfig system ntp-servers primary-ntp-server ntp-server-address ${payload.ntpPrimary}`,
           `set deviceconfig system ntp-servers secondary-ntp-server ntp-server-address ${payload.ntpSecondary}`,
-          `set shared log-settings syslog NetVista-SIEM server ${payload.syslogServer} transport UDP port 514`,
+          `set shared log-settings syslog OmniNet-SIEM server ${payload.syslogServer} transport UDP port 514`,
           `set deviceconfig system snmp-setting access-setting version v3`,
           `set deviceconfig system location "${payload.snmpLocation}"`,
           payload.disableTelnet
@@ -676,8 +945,8 @@ export function compileVendorCli(
         return [
           `# MikroTik RouterOS v7 Hardening & Telemetry — ${hostname}`,
           `/system ntp client set enabled=yes servers=${payload.ntpPrimary},${payload.ntpSecondary}`,
-          `/system logging action add name=netvista target=remote remote=${payload.syslogServer}`,
-          `/system logging add topics=info,warning,critical action=netvista`,
+          `/system logging action add name=omninet target=remote remote=${payload.syslogServer}`,
+          `/system logging add topics=info,warning,critical action=omninet`,
           `/snmp set enabled=yes location="${payload.snmpLocation}"`,
           payload.disableTelnet
             ? `/ip service set telnet disabled=yes; /ip service set ssh disabled=no`
@@ -769,7 +1038,7 @@ export function compileVendorCli(
         return [
           `# Linux Server Chrony NTP, Rsyslog & SSHD Hardening — ${hostname}`,
           `echo "server ${payload.ntpPrimary} iburst prefer" | sudo tee -a /etc/chrony/chrony.conf`,
-          `echo "*.* @${payload.syslogServer}:514" | sudo tee /etc/rsyslog.d/50-netvista.conf`,
+          `echo "*.* @${payload.syslogServer}:514" | sudo tee /etc/rsyslog.d/50-omninet.conf`,
           payload.disableTelnet ? `sudo systemctl disable --now telnet.socket 2>/dev/null || true` : `# Telnet unchanged`,
           `sudo systemctl restart chrony rsyslog sshd`,
         ].join('\n');

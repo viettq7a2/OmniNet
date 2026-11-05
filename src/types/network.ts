@@ -20,7 +20,56 @@ export type VendorName =
   | 'Juniper'
   | 'MikroTik'
   | 'Aruba'
+  | 'Ubiquiti UniFi'
+  | 'HPE Comware'
+  | 'HP ProCurve'
   | 'Linux / Server';
+
+export interface VendorDatasheetProfile {
+  id: string;
+  vendor: string;
+  model: string;
+  osFamily: string;
+  osVersion: string;
+  role: DeviceRole | 'Firewall' | 'Router' | 'Switch' | 'Wireless' | 'Server';
+  switchingCapacityGbps: string;
+  forwardingRateMpps: string;
+  poeBudgetWatts: string;
+  mgmtProtocols: string[];
+  cliDialectSummary: string;
+  versionCliDifferences: string[];
+  sampleVlanCli: string;
+  sampleBaselineCli: string;
+  sampleAclCli: string;
+  datasheetSources: {
+    title: string;
+    url: string;
+  }[];
+  syncedAt: string;
+}
+
+export interface AiAccountProfile {
+  providerId: AiProviderId;
+  providerLabel: string;
+  vendorName: string;
+  email: string;
+  tier: string;
+  connected: boolean;
+  selectedModel: string;
+  reasoningMode: string;
+  authMethod: 'OAuth-SSO' | 'Workspace-Token' | 'Zero-Key-Relay';
+  lastSync: string;
+}
+
+export interface OmniNetAuthSession {
+  isAuthenticated: boolean;
+  username: string;
+  role: string;
+  mfaVerified: boolean;
+  mfaMethod: 'Google Authenticator (TOTP)' | 'Passkey / SSO';
+  lastLoginAt: string;
+  zeroApiKeyMode: boolean;
+}
 
 export interface DeviceInterface {
   name: string;

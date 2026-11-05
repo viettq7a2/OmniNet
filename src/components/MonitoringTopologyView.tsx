@@ -1,3 +1,4 @@
+// OmniNet Interactive Topology Studio & Monitoring View
 import React, { useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
@@ -64,13 +65,16 @@ interface MonitoringTopologyViewProps {
 type CanvasTool = 'select' | 'add-node' | 'draw-link' | 'unlink';
 
 const VENDORS: VendorName[] = [
+  'Ubiquiti UniFi',
+  'Aruba',
+  'HPE Comware',
+  'HP ProCurve',
   'Cisco IOS-XE',
   'Cisco NX-OS',
   'Fortinet',
   'Palo Alto',
   'Juniper',
   'MikroTik',
-  'Aruba',
   'Linux / Server',
 ];
 
