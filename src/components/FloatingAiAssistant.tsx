@@ -740,30 +740,44 @@ export const FloatingAiAssistant: React.FC<FloatingAiAssistantProps> = ({
         </div>
       )}
 
-      {/* Always-Visible Floating Chat Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((o) => !o)}
-        className="inline-flex items-center gap-2.5 px-4 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg border border-blue-500 transition-transform active:scale-95"
-      >
-        <div className="relative flex items-center justify-center">
-          {isOpen ? <X className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+      {/* Compact Circular Floating AI Trigger Button */}
+      <div className="group relative flex items-center">
+        {!isOpen && (
+          <div className="pointer-events-none mr-2.5 hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/95 text-white text-[11px] font-medium shadow-md border border-slate-700/80 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all whitespace-nowrap">
+            <span>
+              Trợ lý AI ·{' '}
+              {activeProvider.name
+                .replace('Google ', '')
+                .replace('OpenAI ', '')
+                .replace('Anthropic ', '')}
+            </span>
+            {unreachableDevices.length > 0 && (
+              <span className="text-rose-400 font-mono">
+                ({unreachableDevices.length} lỗi kết nối)
+              </span>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsOpen((o) => !o)}
+          aria-label="Mở Trợ lý Kỹ sư AI"
+          title={`Trợ lý AI (${activeProvider.name}) — ${
+            unreachableDevices.length > 0
+              ? `${unreachableDevices.length} thiết bị lỗi kết nối cần fix`
+              : activeProvider.selectedModel
+          }`}
+          className="relative w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 via-blue-600 to-slate-900 hover:from-sky-400 hover:via-blue-500 hover:to-slate-800 text-white shadow-lg border border-sky-400/50 flex items-center justify-center transition-transform active:scale-95"
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
           {!isOpen && unreachableDevices.length > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-blue-600" />
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-mono font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-950 tabular-nums">
+              {unreachableDevices.length}
+            </span>
           )}
-        </div>
-        <div className="text-left leading-tight">
-          <div className="text-xs font-semibold flex items-center gap-1.5">
-            <span>Trợ lý AI ({activeProvider.name.replace('Google ', '').replace('OpenAI ', '').replace('Anthropic ', '')})</span>
-            <Sparkles className="w-3 h-3 text-amber-300" />
-          </div>
-          <div className="text-[10px] font-mono text-blue-100">
-            {unreachableDevices.length > 0
-              ? `${unreachableDevices.length} lỗi kết nối cần fix`
-              : activeProvider.selectedModel}
-          </div>
-        </div>
-      </button>
+        </button>
+      </div>
     </div>
   );
 };

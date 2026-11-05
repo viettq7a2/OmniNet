@@ -18,6 +18,7 @@ import {
   AiProviderId,
   OmniNetAuthSession,
 } from '../types/network';
+import { OmniNetLogo } from './OmniNetLogo';
 
 interface AuthOnboardingGateProps {
   isOpen: boolean;
@@ -149,9 +150,7 @@ export const AuthOnboardingGate: React.FC<AuthOnboardingGateProps> = ({
         {/* Top Banner */}
         <div className="px-6 py-5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-inner">
-              <Shield className="w-6 h-6" />
-            </div>
+            <OmniNetLogo size={42} variant="icon" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-white tracking-tight">

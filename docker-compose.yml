@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  omninet-enterprise:
+    container_name: omninet-ncm-core
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: omninet/enterprise-ncm:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Optional: Server-side Zero-API-Key AI Relay credential for all NOC engineers
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - omninet_backups:/app/backups
+    networks:
+      - omninet_mgmt_net
+
+volumes:
+  omninet_backups:
+    driver: local
+
+networks:
+  omninet_mgmt_net:
+    driver: bridge

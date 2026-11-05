@@ -15,6 +15,7 @@ import {
   Wrench,
   X,
   XCircle,
+  Zap,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -98,6 +99,7 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
   const [tool, setTool] = useState<CanvasTool>('select');
   const [zoom, setZoom] = useState<number>(1);
   const [alertFilter, setAlertFilter] = useState<'ALL' | 'UNACK'>('UNACK');
+  const [animateFlow, setAnimateFlow] = useState<boolean>(true);
 
   // Dragging state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -119,7 +121,8 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
   const [linkSrcPort, setLinkSrcPort] = useState('TenGig0/10');
   const [linkDstPort, setLinkDstPort] = useState('TenGig0/10');
   const [linkSpeedMbps, setLinkSpeedMbps] = useState(10000);
-  const [linkProtocol, setLinkProtocol] = useState<'LLDP' | 'CDP' | 'LACP' | 'STATIC'>('LLDP');
+  const [linkProtocol, setLinkProtocol] = useState<'LLDP' | 'CDP' | 'LACP' | 'STATIC'>('LACP');
+  const [linkBundleCount, setLinkBundleCount] = useState<1 | 2 | 4>(2);
 
   // Add-node modal state (triggered by clicking canvas in add-node mode or clicking + Add Node)
   const [newNodeModalCoords, setNewNodeModalCoords] = useState<{ x: number; y: number } | null>(
@@ -163,19 +166,23 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
   }, [devices]);
 
   const topologyLinks = useMemo(() => {
-    const pairs = new Set<string>();
-    const links: {
-      key: string;
-      sourceId: string;
-      targetId: string;
-      sourcePort: string;
-      targetPort: string;
-      from: { x: number; y: number; device: NetworkDevice };
-      to: { x: number; y: number; device: NetworkDevice };
-      bandwidthMbps: number;
-      protocol: string;
-      isUp: boolean;
-    }[] = [];
+    const linkMap = new Map<
+      string,
+      {
+        key: string;
+        sourceId: string;
+        targetId: string;
+        sourcePort: string;
+        targetPort: string;
+        from: { x: number; y: number; device: NetworkDevice };
+        to: { x: number; y: number; device: NetworkDevice };
+        bandwidthMbps: number;
+        protocol: string;
+        isUp: boolean;
+        memberCount: number;
+        isLag: boolean;
+      }
+    >();
 
     devices.forEach((dev) => {
       dev.interfaces.forEach((iface) => {
@@ -184,11 +191,10 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
         const source = positionedNodes[dev.id];
         if (!source || !target) return;
 
-        const pairKey = [dev.id, iface.connectedToId].sort().join('--');
-        if (pairs.has(pairKey)) return;
-        pairs.add(pairKey);
+        const sortedIds = [dev.id, iface.connectedToId].sort();
+        const pairKey = sortedIds.join('--');
 
-        // Also check peer port adminStatus if present
+        // Only process from canonical lower-ID side or if not seen yet to avoid double-counting reciprocal port entries
         const peerPort = target.device.interfaces.find((p) => p.connectedToId === dev.id);
         const peerUp = peerPort
           ? peerPort.status === 'up' && (peerPort.adminStatus ?? 'up') === 'up'
@@ -201,22 +207,50 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
           (iface.adminStatus ?? 'up') === 'up' &&
           peerUp;
 
-        links.push({
-          key: pairKey,
-          sourceId: dev.id,
-          targetId: iface.connectedToId,
-          sourcePort: iface.name,
-          targetPort: iface.connectedPort || peerPort?.name || 'eth0',
-          from: source,
-          to: target,
-          bandwidthMbps: isUp ? Number((iface.rxMbps + iface.txMbps).toFixed(0)) : 0,
-          protocol: iface.protocol,
-          isUp,
-        });
+        const portLooksLag =
+          iface.protocol === 'LACP' ||
+          /po\d|bond|lag|port-channel|2x|4x/i.test(iface.name);
+
+        const existing = linkMap.get(pairKey);
+        if (!existing) {
+          // Count how many interfaces on `dev` connect to `iface.connectedToId`
+          const samePeerIfaces = dev.interfaces.filter(
+            (i) => i.connectedToId === iface.connectedToId
+          );
+          const countFromIfaces = samePeerIfaces.length;
+          const inferredCount =
+            countFromIfaces >= 2
+              ? countFromIfaces
+              : portLooksLag
+              ? /4x/i.test(iface.name)
+                ? 4
+                : 2
+              : 1;
+
+          const totalBw = samePeerIfaces.reduce(
+            (sum, item) => sum + (isUp ? Number((item.rxMbps + item.txMbps).toFixed(0)) : 0),
+            0
+          );
+
+          linkMap.set(pairKey, {
+            key: pairKey,
+            sourceId: dev.id,
+            targetId: iface.connectedToId,
+            sourcePort: iface.name,
+            targetPort: iface.connectedPort || peerPort?.name || 'eth0',
+            from: source,
+            to: target,
+            bandwidthMbps: totalBw,
+            protocol: inferredCount >= 2 ? 'LACP' : iface.protocol,
+            isUp,
+            memberCount: inferredCount,
+            isLag: inferredCount >= 2 || portLooksLag,
+          });
+        }
       });
     });
 
-    return links;
+    return Array.from(linkMap.values());
   }, [devices, positionedNodes]);
 
   const clientToSvgCoords = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -307,14 +341,30 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
   const submitNewLink = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingLinkPair) return;
-    onCreateTopologyLink({
-      sourceId: pendingLinkPair.source.id,
-      sourcePort: linkSrcPort.trim() || 'Gi0/1',
-      targetId: pendingLinkPair.target.id,
-      targetPort: linkDstPort.trim() || 'Gi0/1',
-      speedMbps: linkSpeedMbps,
-      protocol: linkProtocol,
-    });
+    const baseSrc = linkSrcPort.trim() || 'Gi0/1';
+    const baseDst = linkDstPort.trim() || 'Gi0/1';
+
+    if (linkBundleCount === 1) {
+      onCreateTopologyLink({
+        sourceId: pendingLinkPair.source.id,
+        sourcePort: baseSrc,
+        targetId: pendingLinkPair.target.id,
+        targetPort: baseDst,
+        speedMbps: linkSpeedMbps,
+        protocol: linkProtocol,
+      });
+    } else {
+      for (let i = 1; i <= linkBundleCount; i++) {
+        onCreateTopologyLink({
+          sourceId: pendingLinkPair.source.id,
+          sourcePort: `${baseSrc} (LAG-${i}/${linkBundleCount})`,
+          targetId: pendingLinkPair.target.id,
+          targetPort: `${baseDst} (LAG-${i}/${linkBundleCount})`,
+          speedMbps: linkSpeedMbps,
+          protocol: 'LACP',
+        });
+      }
+    }
     setPendingLinkPair(null);
     setTool('select');
   };
@@ -439,6 +489,19 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => setAnimateFlow((f) => !f)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
+                animateFlow
+                  ? 'border-sky-500/50 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+              }`}
+              title="Bật/Tắt hiệu ứng luồng sáng dữ liệu chạy qua dây mạng"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>{animateFlow ? 'Traffic Flow: ON' : 'Traffic Flow: OFF'}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setZoom(1);
                 onAutoLayoutTopology();
@@ -527,6 +590,13 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                   fill={isDark ? '#1e293b' : '#cbd5e1'}
                 />
               </pattern>
+              <filter id="linkLightGlow" x="-25%" y="-25%" width="150%" height="150%">
+                <feGaussianBlur stdDeviation="2.2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
 
             <rect x="0" y="0" width="1040" height="550" fill="url(#topoGrid)" />
@@ -550,10 +620,46 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
               </text>
             ))}
 
-            {/* Topology Cable Links */}
+            {/* Topology Cable Links (Supports Single Link & Multi-Cable LAG/LACP Bundles + Animated Light Flow) */}
             {topologyLinks.map((lnk) => {
+              const dx = lnk.to.x - lnk.from.x;
+              const dy = lnk.to.y - lnk.from.y;
+              const len = Math.max(1, Math.hypot(dx, dy));
+              // Perpendicular unit normal vector for offsetting multi-strand LAG cables
+              const nx = -dy / len;
+              const ny = dx / len;
+
               const midX = (lnk.from.x + lnk.to.x) / 2;
               const midY = (lnk.from.y + lnk.to.y) / 2;
+
+              const strandOffsets =
+                lnk.memberCount >= 4
+                  ? [-6, -2, 2, 6]
+                  : lnk.memberCount >= 2 || lnk.isLag
+                  ? [-3.5, 3.5]
+                  : [0];
+
+              const baseStroke = lnk.isUp
+                ? lnk.isLag
+                  ? isDark
+                    ? '#0284c7'
+                    : '#0369a1'
+                  : isDark
+                  ? '#2563eb'
+                  : '#3b82f6'
+                : '#dc2626';
+
+              const lightPulseColor = lnk.isLag ? '#34d399' : '#38bdf8';
+              const badgeText =
+                tool === 'unlink'
+                  ? 'CUT CABLE'
+                  : lnk.isUp
+                  ? lnk.isLag
+                    ? `LAG ${strandOffsets.length}x · ${lnk.bandwidthMbps}M`
+                    : `${lnk.bandwidthMbps} Mbps`
+                  : 'LINK DOWN';
+              const badgeWidth = lnk.isLag ? 104 : 84;
+
               return (
                 <g
                   key={lnk.key}
@@ -565,20 +671,75 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                   }}
                   className={tool === 'unlink' ? 'cursor-pointer' : ''}
                 >
-                  <line
-                    x1={lnk.from.x}
-                    y1={lnk.from.y}
-                    x2={lnk.to.x}
-                    y2={lnk.to.y}
-                    stroke={lnk.isUp ? (isDark ? '#3b82f6' : '#2563eb') : '#dc2626'}
-                    strokeWidth={lnk.isUp ? 2.2 : 1.8}
-                    strokeDasharray={lnk.isUp ? undefined : '6 4'}
-                    opacity={lnk.isUp ? 0.8 : 0.9}
-                  />
+                  {/* Render each physical cable strand in the link / LAG bundle */}
+                  {strandOffsets.map((offset, sIdx) => {
+                    const x1 = lnk.from.x + nx * offset;
+                    const y1 = lnk.from.y + ny * offset;
+                    const x2 = lnk.to.x + nx * offset;
+                    const y2 = lnk.to.y + ny * offset;
+
+                    return (
+                      <g key={`${lnk.key}-strand-${sIdx}`}>
+                        {/* Structural Cable Line */}
+                        <line
+                          x1={x1}
+                          y1={y1}
+                          x2={x2}
+                          y2={y2}
+                          stroke={baseStroke}
+                          strokeWidth={lnk.isUp ? 2 : 1.8}
+                          strokeDasharray={lnk.isUp ? undefined : '6 4'}
+                          opacity={lnk.isUp ? 0.65 : 0.9}
+                        />
+
+                        {/* Animated Luminous Packet Beam Running Along Active Cable */}
+                        {lnk.isUp && animateFlow && (
+                          <line
+                            x1={x1}
+                            y1={y1}
+                            x2={x2}
+                            y2={y2}
+                            stroke={lightPulseColor}
+                            strokeWidth={2.6}
+                            strokeLinecap="round"
+                            strokeDasharray="18 62"
+                            filter="url(#linkLightGlow)"
+                            opacity={0.95}
+                          >
+                            <animate
+                              attributeName="stroke-dashoffset"
+                              from={sIdx % 2 === 0 ? '160' : '120'}
+                              to="0"
+                              dur={lnk.isLag ? '1.35s' : '1.75s'}
+                              repeatCount="indefinite"
+                            />
+                          </line>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* LACP / LAG Ring Collar Indicator when link is a Multi-Cable Bundle */}
+                  {lnk.isLag && (
+                    <ellipse
+                      cx={midX - (dx / len) * 34}
+                      cy={midY - (dy / len) * 34}
+                      rx={7}
+                      ry={11}
+                      transform={`rotate(${(Math.atan2(dy, dx) * 180) / Math.PI} ${
+                        midX - (dx / len) * 34
+                      } ${midY - (dy / len) * 34})`}
+                      fill="none"
+                      stroke={lnk.isUp ? '#34d399' : '#dc2626'}
+                      strokeWidth={1.8}
+                    />
+                  )}
+
+                  {/* Link Telemetry & LAG Badge */}
                   <rect
-                    x={midX - 42}
+                    x={midX - badgeWidth / 2}
                     y={midY - 10}
-                    width={84}
+                    width={badgeWidth}
                     height={20}
                     rx={4}
                     fill={
@@ -592,7 +753,9 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                       tool === 'unlink'
                         ? '#dc2626'
                         : lnk.isUp
-                        ? isDark
+                        ? lnk.isLag
+                          ? '#10b981'
+                          : isDark
                           ? '#334155'
                           : '#cbd5e1'
                         : '#dc2626'
@@ -607,7 +770,11 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                       tool === 'unlink'
                         ? '#ffffff'
                         : lnk.isUp
-                        ? isDark
+                        ? lnk.isLag
+                          ? isDark
+                            ? '#6ee7b7'
+                            : '#047857'
+                          : isDark
                           ? '#e2e8f0'
                           : '#1e293b'
                         : '#dc2626'
@@ -615,11 +782,7 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                     fontSize={9.5}
                     fontFamily="JetBrains Mono, monospace"
                   >
-                    {tool === 'unlink'
-                      ? 'CUT CABLE'
-                      : lnk.isUp
-                      ? `${lnk.bandwidthMbps} Mbps`
-                      : 'LINK DOWN'}
+                    {badgeText}
                   </text>
                 </g>
               );
@@ -1203,10 +1366,24 @@ export const MonitoringTopologyView: React.FC<MonitoringTopologyViewProps> = ({
                     }
                     className="w-full px-3 py-2 font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
+                    <option value="LACP">802.3ad LACP (Port-Channel)</option>
                     <option value="LLDP">LLDP</option>
                     <option value="CDP">Cisco CDP</option>
-                    <option value="LACP">802.3ad LACP</option>
                     <option value="STATIC">Static Patch</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Số lượng dây cáp / Gộp kênh LAG (Multi-Cable Bundle)
+                  </label>
+                  <select
+                    value={linkBundleCount}
+                    onChange={(e) => setLinkBundleCount(Number(e.target.value) as 1 | 2 | 4)}
+                    className="w-full px-3 py-2 font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  >
+                    <option value={1}>1 Dây đơn (Single Physical Link)</option>
+                    <option value={2}>2 Dây gộp LAG / LACP (2x Member Port-Channel)</option>
+                    <option value={4}>4 Dây gộp LAG / LACP (4x Member Port-Channel)</option>
                   </select>
                 </div>
               </div>

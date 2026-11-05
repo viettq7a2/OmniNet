@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  BookOpen,
   Cable,
   CheckCircle2,
   Cpu,
   Database,
+  Globe,
   LayoutDashboard,
   Lock,
   Menu,
+  Monitor,
   Moon,
   Network,
   Radar,
@@ -15,6 +18,7 @@ import {
   Sliders,
   Sparkles,
   Sun,
+  Wrench,
   X,
 } from 'lucide-react';
 import {
@@ -50,6 +54,11 @@ import { DeviceDetailDrawer } from './components/DeviceDetailDrawer';
 import { FloatingAiAssistant } from './components/FloatingAiAssistant';
 import { VendorDatasheetSyncModal } from './components/VendorDatasheetSyncModal';
 import { AuthOnboardingGate } from './components/AuthOnboardingGate';
+import { OmniNetLogo } from './components/OmniNetLogo';
+import { PlatformDeploymentModal } from './components/PlatformDeploymentModal';
+import { UserGuideModal } from './components/UserGuideModal';
+import { OperationsSuiteView } from './components/OperationsSuiteView';
+import { AppLanguage, RbacRole, TRANSLATIONS } from './utils/i18n';
 
 type NavTab =
   | 'dashboard'
@@ -58,7 +67,8 @@ type NavTab =
   | 'ports-services'
   | 'config'
   | 'discovery'
-  | 'inventory';
+  | 'inventory'
+  | 'operations';
 
 const STORAGE_KEY_DEVICES = 'omninet_enterprise_devices_v3';
 const STORAGE_KEY_THEME = 'omninet_enterprise_theme_v1';
@@ -120,6 +130,9 @@ const DEFAULT_AI_ACCOUNTS: Record<AiProviderId, AiAccountProfile> = {
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [lang, setLang] = useState<AppLanguage>('vi');
+  const [activeRole, setActiveRole] = useState<RbacRole>('admin');
+  const t = TRANSLATIONS[lang];
 
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
@@ -237,6 +250,8 @@ export default function App() {
     ];
   });
   const [isDatasheetModalOpen, setIsDatasheetModalOpen] = useState<boolean>(false);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
 
   const handleSaveDatasheetProfile = useCallback((profile: VendorDatasheetProfile) => {
     setSyncedDatasheets((prev) => {
@@ -1034,6 +1049,10 @@ export default function App() {
 
   const handleDeleteDevice = useCallback(
     (deviceId: string) => {
+      if (activeRole === 'noc-l1') {
+        showToast(t.header.rbacBlockedToast);
+        return;
+      }
       setDevices((prev) => {
         const target = prev.find((d) => d.id === deviceId);
         const next = prev.filter((d) => d.id !== deviceId);
@@ -1043,11 +1062,15 @@ export default function App() {
       });
       if (inspectedDeviceId === deviceId) setInspectedDeviceId(null);
     },
-    [appendImmediateTelemetrySnapshot, inspectedDeviceId, showToast]
+    [activeRole, appendImmediateTelemetrySnapshot, inspectedDeviceId, showToast, t.header.rbacBlockedToast]
   );
 
   const handlePushConfigToDevices = useCallback(
     (deviceIds: string[], compiledByDeviceId: Record<string, string>, summary: string) => {
+      if (activeRole === 'noc-l1') {
+        showToast(t.header.rbacBlockedToast);
+        return;
+      }
       const nowStamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
       setDevices((prev) =>
         prev.map((dev) => {
@@ -1074,11 +1097,15 @@ export default function App() {
       );
       showToast(`Deployed multi-vendor configuration to ${deviceIds.length} device(s).`);
     },
-    [showToast]
+    [activeRole, showToast, t.header.rbacBlockedToast]
   );
 
   const handleRollbackDeviceConfig = useCallback(
     (deviceId: string, targetContent: string, label: string) => {
+      if (activeRole === 'noc-l1') {
+        showToast(t.header.rbacBlockedToast);
+        return;
+      }
       const nowStamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
       setDevices((prev) =>
         prev.map((dev) => {
@@ -1103,7 +1130,7 @@ export default function App() {
       );
       showToast(`Rolled back configuration to ${label}.`);
     },
-    [showToast]
+    [activeRole, showToast, t.header.rbacBlockedToast]
   );
 
   const handlePromoteGoldenBaseline = useCallback(
@@ -1131,16 +1158,17 @@ export default function App() {
     label: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
-    { id: 'dashboard', label: 'Summary Dashboard', icon: LayoutDashboard },
-    { id: 'ai-rca', label: 'AI Diagnostics & RCA', icon: Sparkles },
-    { id: 'topology', label: 'Topology Studio', icon: Network },
-    { id: 'ports-services', label: 'Ports & Server Services', icon: Cable },
-    { id: 'config', label: 'Multi-Vendor Config Hub', icon: Sliders },
-    { id: 'discovery', label: 'Network Discovery', icon: Radar },
-    { id: 'inventory', label: 'IT Asset Inventory', icon: Database },
+    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
+    { id: 'topology', label: t.nav.topology, icon: Network },
+    { id: 'ai-rca', label: t.nav.aiRca, icon: Sparkles },
+    { id: 'ports-services', label: t.nav.portsServices, icon: Cable },
+    { id: 'config', label: t.nav.config, icon: Sliders },
+    { id: 'discovery', label: t.nav.discovery, icon: Radar },
+    { id: 'inventory', label: t.nav.inventory, icon: Database },
+    { id: 'operations', label: t.nav.operations, icon: Wrench },
   ];
 
-  const activeBreadcrumb = navItems.find((n) => n.id === activeTab)?.label || 'Dashboard';
+  const activeBreadcrumb = navItems.find((n) => n.id === activeTab)?.label || t.nav.dashboard;
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -1152,7 +1180,7 @@ export default function App() {
         />
       )}
 
-      {/* Left Sidebar Navigation */}
+      {/* Left Sidebar Navigation — Clean, Uncluttered Enterprise Layout */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-transform lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
@@ -1161,15 +1189,13 @@ export default function App() {
         <div>
           <div className="h-14 px-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-mono font-bold text-xs">
-                ON
-              </div>
+              <OmniNetLogo size={32} variant="icon" />
               <div>
-                <div className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                  OmniNet
+                <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                  Omni<span className="text-sky-500 dark:text-sky-400">Net</span>
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                  NCM · AI RCA
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
+                  Enterprise NCM v3.5
                 </div>
               </div>
             </div>
@@ -1182,7 +1208,7 @@ export default function App() {
             </button>
           </div>
 
-          <nav className="p-3 space-y-1">
+          <nav className="p-3 space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -1196,7 +1222,7 @@ export default function App() {
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                     isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
+                      ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -1207,37 +1233,48 @@ export default function App() {
             })}
           </nav>
 
-          {/* Quick Vendor & Security Actions in Sidebar */}
-          <div className="px-3 pt-2 space-y-1.5">
+          {/* Subtle System Utilities List */}
+          <div className="px-3 pt-3 border-t border-slate-200/70 dark:border-slate-800/70 space-y-0.5">
+            <div className="px-3 py-1 text-[10px] font-mono uppercase text-slate-400">
+              {t.sidebar.systemTools}
+            </div>
             <button
               type="button"
               onClick={() => setIsDatasheetModalOpen(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
             >
-              <Cpu className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
-              <span className="truncate">Cập nhật Hãng & CLI theo OS</span>
+              <Cpu className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+              <span className="truncate">{t.header.datasheetBtn}</span>
             </button>
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors"
+              onClick={() => setIsDeployModalOpen(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
             >
-              <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-              <span className="truncate">Đăng nhập 2FA & AI (Zero-Key)</span>
+              <Monitor className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+              <span className="truncate">{t.header.deployBtn}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsGuideModalOpen(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+              <span className="truncate">{t.header.guideBtn}</span>
             </button>
           </div>
         </div>
 
         {/* Sidebar Footer Summary */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>Managed Nodes</span>
+            <span>{t.sidebar.managedNodes}</span>
             <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
               {devices.length}
             </span>
           </div>
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 tabular-nums">
-            <span>Open Alerts</span>
+            <span>{t.sidebar.openAlerts}</span>
             <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
               {alerts.filter((a) => !a.acknowledged).length}
             </span>
@@ -1248,14 +1285,14 @@ export default function App() {
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Lab Inventory</span>
+            <span>{t.sidebar.resetLab}</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar Contract */}
+        {/* Clean, Decluttered Top Header */}
         <header className="h-14 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 sticky top-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -1266,65 +1303,106 @@ export default function App() {
               <Menu className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 truncate">
-              <span className="whitespace-nowrap">Enterprise NOC</span>
+              <span className="whitespace-nowrap">{t.header.enterpriseNoc}</span>
               <span aria-hidden="true">/</span>
-              <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+              <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                 {activeBreadcrumb}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Bilingual Language Toggle (VI | EN) */}
+            <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setLang('vi')}
+                className={`px-2 py-1 rounded-md transition-colors ${
+                  lang === 'vi'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-sky-400 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                VI
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                className={`px-2 py-1 rounded-md transition-colors ${
+                  lang === 'en'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-sky-400 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
+            {/* Active RBAC Role Quick Switcher */}
+            <button
+              type="button"
+              onClick={() => setActiveRole((r) => (r === 'admin' ? 'noc-l1' : 'admin'))}
+              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
+                activeRole === 'admin'
+                  ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
+                  : 'border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+              }`}
+              title="Nhấn để chuyển đổi nhanh giữa quyền Kỹ sư Trưởng (Admin) và Trực ca NOC L1 (Chỉ xem)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{activeRole === 'admin' ? t.header.roleAdmin : t.header.roleNocL1}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsDatasheetModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-cyan-500/40 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100 transition-colors whitespace-nowrap shrink-0"
-              title="Thêm hãng/mã thiết bị còn thiếu và đồng bộ Datasheet & CLI theo phiên bản OS"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
+              title="Thêm hãng/mã thiết bị thiếu & đồng bộ Datasheet CLI theo phiên bản OS"
             >
-              <Cpu className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Cập nhật Hãng & Datasheet CLI</span>
+              <Cpu className="w-3.5 h-3.5 text-sky-500" />
+              <span className="hidden sm:inline">{t.header.datasheetBtn}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsGuideModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
+              title="Sổ tay Hướng dẫn Sử dụng Toàn tập & Giải pháp cho Thiết bị đời cũ"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden xl:inline">{t.header.guideBtn}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsDeployModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
+              title="Tải bộ cài đặt Windows Desktop/Server, Docker Compose và Logo OmniNet"
+            >
+              <Monitor className="w-3.5 h-3.5 text-blue-500" />
+              <span className="hidden lg:inline">{t.header.deployBtn}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap shrink-0"
               title="Đăng nhập Tài khoản OmniNet (Google Authenticator 2FA) & Tài khoản AI (Zero-API-Key)"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">
-                {authSession.username.split('@')[0]} · 2FA & AI SSO
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('ai-rca')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
-                activeTab === 'ai-rca'
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-blue-500/30 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>AI RCA Diagnostics</span>
+              <span className="hidden sm:inline">{t.header.authBtn}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsDark((d) => !d)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0"
+              aria-label="Toggle Theme"
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
             >
               {isDark ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden xl:inline">Light</span>
-                </>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
               ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-slate-600" />
-                  <span className="hidden xl:inline">Dark</span>
-                </>
+                <Moon className="w-3.5 h-3.5 text-slate-600" />
               )}
             </button>
           </div>
@@ -1448,6 +1526,33 @@ export default function App() {
               onOpenDatasheetSync={() => setIsDatasheetModalOpen(true)}
             />
           )}
+
+          {activeTab === 'operations' && (
+            <OperationsSuiteView
+              devices={devices}
+              alerts={alerts}
+              lang={lang}
+              activeRole={activeRole}
+              onChangeRole={(role) => {
+                setActiveRole(role);
+                showToast(
+                  role === 'admin'
+                    ? lang === 'vi'
+                      ? 'Đã chuyển sang quyền Kỹ sư Trưởng (Full Admin).'
+                      : 'Switched to Principal Admin role.'
+                    : lang === 'vi'
+                    ? 'Đã chuyển sang quyền Trực ca NOC L1 (Chế độ Chỉ xem).'
+                    : 'Switched to NOC L1 (Read-Only) role.'
+                );
+              }}
+              onSelectDevice={(dev) => setInspectedDeviceId(dev.id)}
+              onResolveIpConflict={(deviceId, newIp) => {
+                setDevices((prev) =>
+                  prev.map((d) => (d.id === deviceId ? { ...d, ip: newIp } : d))
+                );
+              }}
+            />
+          )}
         </main>
       </div>
 
@@ -1460,6 +1565,18 @@ export default function App() {
         onAddDeviceFromProfile={(newDev) => {
           handleAddManualDevice(newDev);
         }}
+      />
+
+      {/* Windows & Docker Deployment + Official Brand Logo Modal */}
+      <PlatformDeploymentModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+      />
+
+      {/* Full Interactive User Manual & Legacy Device Guide Modal */}
+      <UserGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
       />
 
       {/* 2-Step OmniNet Account + Google Authenticator MFA + Zero-API-Key AI Login Gate */}

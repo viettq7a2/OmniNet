@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Globe,
   Loader2,
   Play,
@@ -9,6 +11,7 @@ import {
   Radar,
   Server,
   ShieldCheck,
+  Terminal,
   XCircle,
 } from 'lucide-react';
 import {
@@ -71,6 +74,187 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const [isProbingHost, setIsProbingHost] = useState(false);
   const [probeError, setProbeError] = useState<string | null>(null);
   const [liveProbeResult, setLiveProbeResult] = useState<LiveProbeResult | null>(null);
+
+  // Device Onboarding CLI Generator State
+  const [onboardVendor, setOnboardVendor] = useState<VendorName>('Cisco IOS-XE');
+  const [onboardMode, setOnboardMode] = useState<'modern' | 'legacy'>('modern');
+  const [omninetServerIp, setOmninetServerIp] = useState('10.10.0.50');
+  const [snmpUser, setSnmpUser] = useState('omninet-poll');
+  const [sshUser, setSshUser] = useState('omninet-admin');
+  const [copiedOnboard, setCopiedOnboard] = useState(false);
+
+  const buildDeviceOnboardingCli = (): string => {
+    if (onboardMode === 'legacy') {
+      return `! === CHẾ ĐỘ THIẾT BỊ ĐỜI CŨ (LEGACY FALLBACK) — ${onboardVendor} ===
+! Dành cho Switch/Router đời cũ không có SNMPv3, không có SSHv2 (ROM non-crypto) hoặc thiếu LLDP
+
+! 1. Thay thế SNMPv3 bằng SNMPv2c Read-Only (khóa chặt ACL chỉ cho phép IP OmniNet ${omninetServerIp}):
+access-list 10 permit ${omninetServerIp}
+snmp-server community ${snmpUser}_RO RO 10
+snmp-server host ${omninetServerIp} version 2c ${snmpUser}_RO
+
+! 2. Thay thế SSHv2 bằng SSHv1/KEX cũ hoặc Telnet nội bộ có ACL bảo vệ:
+username ${sshUser} privilege 15 password 0 OmniNet@2026!
+line vty 0 4
+ access-class 10 in
+ login local
+ transport input ssh telnet
+ exit
+
+! 3. Thay thế LLDP (nếu thiết bị không hỗ trợ LLDP):
+! - Bật CDP (trên Cisco cũ):
+cdp run
+! - Hoặc trên Core Switch thượng nguồn, OmniNet sẽ tự động đọc bảng MAC & ARP:
+!   show mac address-table | include <MAC_THIET_BI_CU>
+!   show ip arp | include <IP_THIET_BI_CU>
+write memory`;
+    }
+
+    switch (onboardVendor) {
+      case 'Cisco IOS-XE':
+      case 'Cisco NX-OS':
+        return `! === Cấu hình trên thiết bị ${onboardVendor} để kết nối với OmniNet (${omninetServerIp}) ===
+configure terminal
+! 1. Bật LLDP & CDP để OmniNet tự động vẽ Sơ đồ Topology
+lldp run
+cdp run
+! 2. Tạo tài khoản SSHv2 đặc quyền (dùng để lấy Running-Config & đẩy lệnh CLI)
+username ${sshUser} privilege 15 algorithm-type scrypt secret OmniNet@2026!
+ip ssh version 2
+ip access-list standard ACL_OMNINET_MGMT
+ permit ${omninetServerIp}
+line vty 0 15
+ access-class ACL_OMNINET_MGMT in
+ login local
+ transport input ssh
+ exit
+! 3. Cấu hình SNMPv3 bảo mật (đọc CPU, RAM, Nhiệt độ, Băng thông từng cổng)
+snmp-server group OMNINET_V3_GRP v3 priv
+snmp-server user ${snmpUser} OMNINET_V3_GRP v3 auth sha OmniAuth@2026 priv aes 128 OmniPriv@2026 access ACL_OMNINET_MGMT
+! 4. Đẩy Syslog & SNMP Trap tức thì về máy chủ OmniNet
+logging host ${omninetServerIp} transport udp port 514
+snmp-server host ${omninetServerIp} version 3 priv ${snmpUser}
+end
+write memory`;
+
+      case 'Aruba':
+        return `! === Cấu hình trên Aruba AOS-CX (6100/6200/6300/8325) để kết nối với OmniNet (${omninetServerIp}) ===
+configure terminal
+! 1. Bật LLDP nhận diện láng giềng
+lldp enable
+! 2. Bật SSHv2 Server & tạo tài khoản quản trị
+ssh server vrf default
+user ${sshUser} group administrators password plaintext OmniNet@2026!
+! 3. Cấu hình SNMPv3 (UDP 161)
+snmp-server vrf default
+snmpv3 user ${snmpUser} auth sha auth-pass plaintext OmniAuth@2026 priv aes priv-pass plaintext OmniPriv@2026
+! 4. Đẩy Syslog về OmniNet
+logging ${omninetServerIp} udp 514
+end
+write memory`;
+
+      case 'HP ProCurve':
+        return `; === Cấu hình trên HP ProCurve / ArubaOS-Switch (PVOS 2530/2920/2930F/5400R) ===
+configure
+; 1. Bật LLDP
+lldp run
+; 2. Bật SSHv2 & tắt Telnet
+ip ssh version 2
+no telnet-server
+password manager user-name ${sshUser} plaintext OmniNet@2026!
+; 3. Bật SNMPv3 và cho phép IP máy chủ OmniNet (${omninetServerIp})
+snmpv3 enable
+snmpv3 user "${snmpUser}" auth sha "OmniAuth@2026" priv aes "OmniPriv@2026"
+snmpv3 group managerpriv user "${snmpUser}" sec-model ver3
+ip authorized-managers ${omninetServerIp} 255.255.255.255 access manager
+; 4. Bật Syslog
+logging ${omninetServerIp}
+write memory`;
+
+      case 'HPE Comware':
+        return `# === Cấu hình trên HPE FlexFabric / Comware v7 để kết nối với OmniNet (${omninetServerIp}) ===
+system-view
+# 1. Bật LLDP toàn cục
+lldp global enable
+# 2. Bật SSHv2 Server & tạo tài khoản local-user
+ssh server enable
+local-user ${sshUser} class manage
+ password simple OmniNet@2026!
+ service-type ssh
+ authorization-attribute user-role network-admin
+ quit
+# 3. Cấu hình SNMPv3 (Auth SHA + Priv AES128)
+snmp-agent
+snmp-agent sys-info version v3
+snmp-agent usm-user v3 ${snmpUser} user-role network-admin simple authentication-mode sha OmniAuth@2026 privacy-mode aes128 OmniPriv@2026
+# 4. Đẩy Syslog về máy chủ OmniNet
+info-center loghost ${omninetServerIp}
+save force`;
+
+      case 'Ubiquiti UniFi':
+        return `# === Cấu hình trên Ubiquiti UniFi Switch / Gateway & UniFi Network Controller ===
+# Bước A (Trên giao diện UniFi Network Controller 8.x):
+# 1. Vào Settings -> System -> Advanced -> Device SSH Authentication:
+#    - Bật "Device SSH Authentication", đặt Username: ${sshUser} / Password: OmniNet@2026!
+# 2. Vào Settings -> CyberSecure / Traffic & Firewall -> SNMP:
+#    - Bật SNMPv3 -> Username: ${snmpUser} / Password: OmniAuth@2026
+# 3. Vào Settings -> System -> Support -> Remote Logging (Syslog):
+#    - Server IP: ${omninetServerIp} , Port: 514
+
+# Bước B (Kiểm tra trực tiếp qua SSH trên thiết bị UniFi Switch/Gateway):
+mca-cli-op info
+# Trỏ Inform hoặc kiểm tra bảng LLDP láng giềng:
+cli
+enable
+show lldp remote-device all`;
+
+      case 'Fortinet':
+        return `# === Cấu hình trên Fortinet FortiGate (FortiOS 7.x) để kết nối với OmniNet (${omninetServerIp}) ===
+config system interface
+    edit "port1"
+        set allowaccess ping https ssh snmp
+        set lldp-transmission enable
+        set lldp-reception enable
+    next
+end
+config system admin
+    edit "${sshUser}"
+        set trusthost1 ${omninetServerIp} 255.255.255.255
+        set accprofile "super_admin"
+        set password OmniNet@2026!
+    next
+end
+config system snmp user
+    edit "${snmpUser}"
+        set notify-hosts ${omninetServerIp}
+        set security-level auth-priv
+        set auth-proto sha256
+        set auth-pwd OmniAuth@2026
+        set priv-proto aes256
+        set priv-pwd OmniPriv@2026
+    next
+end`;
+
+      case 'MikroTik':
+        return `# === Cấu hình trên MikroTik RouterOS v7 để kết nối với OmniNet (${omninetServerIp}) ===
+/ip neighbor discovery-settings set discover-interface-list=all protocol=lldp,cdp
+/user add name=${sshUser} group=full password="OmniNet@2026!" address=${omninetServerIp}/32
+/ip service set ssh disabled=no address=${omninetServerIp}/32 port=22
+/ip ssh set strong-crypto=yes
+/snmp community add name=${snmpUser} addresses=${omninetServerIp}/32 security=private authentication-protocol=SHA1 encryption-protocol=AES authentication-password="OmniAuth@2026" encryption-password="OmniPriv@2026"
+/snmp set enabled=yes
+/system logging action add name=omninet target=remote remote=${omninetServerIp} remote-port=514`;
+
+      default:
+        return `# === Cấu hình trên Linux Server / Juniper / Palo Alto để kết nối với OmniNet (${omninetServerIp}) ===
+# 1. Mở cổng SSH (TCP 22), SNMP (UDP 161) và LLDP Daemon trên Ubuntu/RHEL:
+sudo apt-get update && sudo apt-get install -y snmpd lldpd openssh-server
+sudo systemctl enable --now lldpd ssh
+# 2. Cho phép IP máy chủ OmniNet (${omninetServerIp}) truy cập qua UFW / Firewalld:
+sudo ufw allow from ${omninetServerIp} to any port 22 proto tcp
+sudo ufw allow from ${omninetServerIp} to any port 161 proto udp`;
+    }
+  };
 
   const runSubnetDiscovery = (overrideCidr?: string, overrideSite?: string) => {
     const activeCidr = (overrideCidr ?? cidrInput).trim();
@@ -834,6 +1018,161 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Real Hardware Device Onboarding CLI Generator */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Terminal className="w-5 h-5 text-blue-600 dark:text-sky-400" />
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                Hướng dẫn & Sinh Lệnh Cấu Hình Trên Thiết Bị Thật (Device Onboarding CLI)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Copy đoạn lệnh chuẩn dưới đây dán vào Switch / Router / Firewall thật để mở kết nối SNMPv3, SSHv2, LLDP và Syslog về máy chủ OmniNet
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left: Connection Parameters */}
+          <div className="lg:col-span-5 space-y-3.5 text-xs">
+            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setOnboardMode('modern')}
+                className={`flex-1 py-1.5 px-2.5 rounded-md font-semibold transition-colors ${
+                  onboardMode === 'modern'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Thiết bị Đời mới (SNMPv3/SSHv2)
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnboardMode('legacy')}
+                className={`flex-1 py-1.5 px-2.5 rounded-md font-semibold transition-colors ${
+                  onboardMode === 'legacy'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Thiết bị Đời cũ (Legacy Fallback)
+              </button>
+            </div>
+
+            <div>
+              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                1. Chọn Hãng Thiết bị Đích
+              </label>
+              <select
+                value={onboardVendor}
+                onChange={(e) => setOnboardVendor(e.target.value as VendorName)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-medium"
+              >
+                <option value="Cisco IOS-XE">Cisco IOS-XE / Catalyst</option>
+                <option value="Cisco NX-OS">Cisco Nexus (NX-OS)</option>
+                <option value="Aruba">Aruba AOS-CX (6100/6200/6300)</option>
+                <option value="HP ProCurve">HP ProCurve / ArubaOS-Switch (PVOS)</option>
+                <option value="HPE Comware">HPE FlexFabric (Comware v7)</option>
+                <option value="Ubiquiti UniFi">Ubiquiti UniFi (Controller & USW CLI)</option>
+                <option value="Fortinet">Fortinet FortiGate (FortiOS)</option>
+                <option value="MikroTik">MikroTik RouterOS v7</option>
+                <option value="Linux / Server">Linux Server / Juniper / Palo Alto</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  IP Máy chủ OmniNet
+                </label>
+                <input
+                  type="text"
+                  value={omninetServerIp}
+                  onChange={(e) => setOmninetServerIp(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  SNMPv3 User
+                </label>
+                <input
+                  type="text"
+                  value={snmpUser}
+                  onChange={(e) => setSnmpUser(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  SSH Admin User
+                </label>
+                <input
+                  type="text"
+                  value={sshUser}
+                  onChange={(e) => setSshUser(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-400">
+              <div className="font-semibold text-slate-900 dark:text-slate-200">
+                4 Giao thức cần mở để 2 bên kết nối đầy đủ:
+              </div>
+              <div>
+                • <strong className="text-slate-800 dark:text-slate-200">SNMPv3 (UDP 161):</strong> Đọc CPU, RAM, Nhiệt độ, Băng thông từng cổng.
+              </div>
+              <div>
+                • <strong className="text-slate-800 dark:text-slate-200">LLDP / CDP (L2):</strong> Tự động phát hiện kết nối dây cáp giữa các Switch/Router để vẽ Sơ đồ Topology.
+              </div>
+              <div>
+                • <strong className="text-slate-800 dark:text-slate-200">SSHv2 / API (TCP 22/443):</strong> Lấy Running-Config kiểm tra lệch chuẩn và đẩy lệnh fix tự động.
+              </div>
+              <div>
+                • <strong className="text-slate-800 dark:text-slate-200">Syslog (UDP 514):</strong> Bắn cảnh báo tức thì về OmniNet khi cổng rớt.
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Generated CLI */}
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="px-4 py-2.5 rounded-t-xl bg-slate-900 border border-b-0 border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-mono font-semibold text-sky-400">
+                CLI Cấu hình trên {onboardVendor}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(buildDeviceOnboardingCli());
+                  setCopiedOnboard(true);
+                  setTimeout(() => setCopiedOnboard(false), 2000);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
+              >
+                {copiedOnboard ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Đã copy lệnh</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy lệnh cấu hình</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="flex-1 p-4 rounded-b-xl bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto border border-slate-800 leading-relaxed">
+              {buildDeviceOnboardingCli()}
+            </pre>
+          </div>
         </div>
       </div>
     </div>
