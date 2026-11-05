@@ -237,6 +237,133 @@ call npm run build
 echo [4/4] Update complete! Restarting OmniNet...
 call deploy\\windows\\Start-OmniNet-Windows.bat`;
 
+const WINDOWS_SETUP_ISS_CONTENT = `; ==============================================================================
+; OmniNet Enterprise NCM — Inno Setup Script
+; Compiles the entire application into a single "OmniNet-Enterprise-Setup-v3.5.0.exe"
+; ==============================================================================
+
+#define MyAppName "OmniNet Enterprise NCM"
+#define MyAppVersion "3.5.0"
+#define MyAppPublisher "OmniNet Systems"
+#define MyAppURL "https://github.com/viettq14407/omninet-enterprise-ncm"
+#define MyAppExeName "Start-OmniNet-Windows.bat"
+
+[Setup]
+AppId={{9F82C10E-59B1-4A63-8F42-021C77B84920}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+DefaultDirName={autopf}\\{#MyAppName}
+DefaultGroupName={#MyAppName}
+AllowNoIcons=yes
+OutputDir=..\\..\\dist-installer
+OutputBaseFilename=OmniNet-Enterprise-Setup-v{#MyAppVersion}
+Compression=lzma2/ultra64
+SolidCompression=yes
+WizardStyle=modern
+ArchitecturesInstallIn64BitMode=x64compatible
+PrivilegesRequired=admin
+UninstallDisplayIcon={app}\\public\\favicon.ico
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "firewall"; Description: "Configure Windows Firewall (Allow Port 3000 & SNMP/SSH)"; GroupDescription: "Network Security:"
+
+[Files]
+Source: "..\\..\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "node_modules\\*,dist-installer\\*,dist\\*,tests\\*,*.git*"
+
+[Icons]
+Name: "{group}\\{#MyAppName}"; Filename: "{app}\\deploy\\windows\\{#MyAppExeName}"; IconFilename: "{app}\\public\\favicon.ico"
+Name: "{group}\\Update OmniNet via GitHub"; Filename: "{app}\\deploy\\windows\\Update-OmniNet-Windows.bat"; IconFilename: "{app}\\public\\favicon.ico"
+Name: "{group}\\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\deploy\\windows\\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\\public\\favicon.ico"
+
+[Run]
+Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""OmniNet Enterprise NCM (Port 3000)"" dir=in action=allow protocol=TCP localport=3000"; Flags: runhidden; Tasks: firewall
+Filename: "cmd.exe"; Parameters: "/c npm install && npm run build"; WorkingDir: "{app}"; Flags: runhidden; StatusMsg: "Preparing OmniNet Enterprise production bundle..."
+Filename: "{app}\\deploy\\windows\\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent`;
+
+const WINDOWS_BUILD_EXE_BAT_CONTENT = `@echo off
+title OmniNet Enterprise NCM - Single EXE Installer Builder
+color 0B
+echo ============================================================================
+echo   OmniNet Enterprise NCM - Windows Single-File Setup (.EXE) Generator
+echo   Target Output: dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe
+echo ============================================================================
+echo.
+
+cd /d "%~dp0\\..\\.."
+
+where node >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js is not installed. Please install Node.js LTS from https://nodejs.org
+    pause
+    exit /b 1
+)
+
+echo [1/4] Installing project dependencies...
+call npm install
+
+echo [2/4] Compiling frontend & backend assets...
+call npm run build
+
+if not exist "dist-installer" mkdir "dist-installer"
+
+echo [3/4] Searching for Inno Setup Compiler (ISCC.exe)...
+
+set "ISCC_PATH="
+if exist "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
+if exist "C:\\Program Files\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=C:\\Program Files\\Inno Setup 6\\ISCC.exe"
+if exist "%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe" set "ISCC_PATH=%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe"
+
+if defined ISCC_PATH (
+    echo [FOUND] Inno Setup compiler detected at: "%ISCC_PATH%"
+    echo Compiling single-file installer: dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe ...
+    "%ISCC_PATH%" "deploy\\windows\\OmniNet-Enterprise-Setup.iss"
+    if %errorlevel% equ 0 (
+        echo.
+        echo ============================================================================
+        echo [SUCCESS] File cai dat duy nhat da duoc tao thanh cong tai:
+        echo   %CD%\\dist-installer\\OmniNet-Enterprise-Setup-v3.5.0.exe
+        echo ============================================================================
+        explorer "%CD%\\dist-installer"
+        pause
+        exit /b 0
+    )
+)
+
+echo [INFO] Inno Setup is not installed yet on this system.
+echo Dang cai dat Inno Setup tu dong qua Windows Package Manager (winget)...
+winget install --id JRSoftware.InnoSetup -e --silent --accept-source-agreements --accept-package-agreements >nul 2>nul
+
+if exist "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" (
+    "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" "deploy\\windows\\OmniNet-Enterprise-Setup.iss"
+    echo [SUCCESS] Tao bo cai dat Setup.exe thanh cong!
+    explorer "%CD%\\dist-installer"
+    pause
+    exit /b 0
+)
+
+echo.
+echo ============================================================================
+echo   CAC PHUONG AN DONG GOI 1 FILE .EXE DUY NHAT:
+echo ============================================================================
+echo   Phuong an 1 (Khuyen nghi):
+echo     1. Cai dat Inno Setup mien phi tu: https://jrsoftware.org/isdl.php
+echo     2. Nhap dup file "deploy\\windows\\OmniNet-Enterprise-Setup.iss" va bam Run (F9).
+echo     3. Thu muc "dist-installer" se xuat hien file "OmniNet-Enterprise-Setup-v3.5.0.exe".
+echo.
+echo   Phuong an 2 (Dong goi Native App truc tiep bang 1 lenh qua CMD):
+echo     npx nativefier --name "OmniNet-Enterprise" --width 1500 --height 950 http://localhost:3000
+echo ============================================================================
+pause`;
+
 export const PlatformDeploymentModal: React.FC<PlatformDeploymentModalProps> = ({
   isOpen,
   lang = 'vi',
@@ -628,16 +755,31 @@ docker compose up -d --build`}
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Package className="w-3.5 h-3.5 text-blue-500" />
-                    <span>{isVi ? 'Cách đóng gói thành file .EXE độc lập' : 'How to build standalone .EXE'}</span>
+                    <span>{isVi ? 'Đóng gói thành 1 file cài đặt .EXE duy nhất (Setup Wizard)' : 'Build 1-File Setup .EXE'}</span>
                   </h4>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                     {isVi
-                      ? 'Cách 1 (Nhanh nhất): Dùng công cụ "Bat To Exe Converter" đóng gói Start-OmniNet-Windows.bat kèm icon logo thành OmniNet.exe.\nCách 2 (Chuẩn Electron Native App): Mở Command Prompt trong thư mục app và gõ lệnh dưới đây để tạo file exe cài đặt:'
-                      : 'Run the nativefier command to generate a portable Windows .exe binary:'}
+                      ? 'Đã tạo sẵn bộ kịch bản Inno Setup để xuất file "OmniNet-Enterprise-Setup-v3.5.0.exe" duy nhất. File cài đặt này tự động cài đặt vào Program Files, tạo biểu tượng Desktop, Menu Start, cấu hình Firewall và tích hợp trình gỡ cài đặt (Uninstaller).'
+                      : 'Built-in Inno Setup configuration creates a single standalone "OmniNet-Enterprise-Setup-v3.5.0.exe" with desktop shortcut, start menu, and firewall setup.'}
                   </p>
-                  <pre className="p-2.5 rounded bg-slate-950 text-sky-300 font-mono text-[11px] overflow-x-auto">
-                    npx nativefier --name "OmniNet" --width 1480 --height 920 http://localhost:3000
-                  </pre>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFile('Build-Single-EXE-Setup.bat', WINDOWS_BUILD_EXE_BAT_CONTENT)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isVi ? 'Tải Script Tạo .EXE (1-Click)' : 'Download EXE Builder (.BAT)'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFile('OmniNet-Enterprise-Setup.iss', WINDOWS_SETUP_ISS_CONTENT)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isVi ? 'Tải Kịch bản Inno Setup (.ISS)' : 'Download .ISS Config'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
@@ -651,6 +793,94 @@ docker compose up -d --build`}
                       : '• Updating via git pull NEVER resets your network nodes or topology!\n• Data only resets if you click Reset Lab or clear browser local storage.\n• Always keep a .JSON snapshot backup from tab 5 for peace of mind.'}
                   </p>
                 </div>
+              </div>
+
+              {/* File: OmniNet-Enterprise-Setup.iss (Inno Setup 1-File Setup Creator) */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="px-4 py-3 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-xs font-mono font-bold">
+                      deploy/windows/OmniNet-Enterprise-Setup.iss (Tạo file OmniNet-Enterprise-Setup-v3.5.0.exe)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy('win-iss', WINDOWS_SETUP_ISS_CONTENT)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      {copiedId === 'win-iss' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{isVi ? 'Đã chép' : 'Copied'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{isVi ? 'Sao chép' : 'Copy'}</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDownloadFile('OmniNet-Enterprise-Setup.iss', WINDOWS_SETUP_ISS_CONTENT)
+                      }
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isVi ? 'Tải .ISS' : 'Download .ISS'}</span>
+                    </button>
+                  </div>
+                </div>
+                <pre className="p-4 bg-slate-950 text-purple-300 font-mono text-xs overflow-x-auto leading-relaxed">
+                  {WINDOWS_SETUP_ISS_CONTENT}
+                </pre>
+              </div>
+
+              {/* File: Build-Single-EXE-Setup.bat */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="px-4 py-3 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <span className="text-xs font-mono font-bold">
+                      deploy/windows/Build-Single-EXE-Setup.bat (1-Click Run để tạo Setup .EXE)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy('win-build-bat', WINDOWS_BUILD_EXE_BAT_CONTENT)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      {copiedId === 'win-build-bat' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{isVi ? 'Đã chép' : 'Copied'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{isVi ? 'Sao chép' : 'Copy'}</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDownloadFile('Build-Single-EXE-Setup.bat', WINDOWS_BUILD_EXE_BAT_CONTENT)
+                      }
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isVi ? 'Tải Builder .BAT' : 'Download Builder .BAT'}</span>
+                    </button>
+                  </div>
+                </div>
+                <pre className="p-4 bg-slate-950 text-sky-300 font-mono text-xs overflow-x-auto leading-relaxed">
+                  {WINDOWS_BUILD_EXE_BAT_CONTENT}
+                </pre>
               </div>
 
 
